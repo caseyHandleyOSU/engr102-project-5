@@ -2,9 +2,6 @@ namespace SpriteKind {
     export const PowerUp = SpriteKind.create()
     export const HealthBar = SpriteKind.create()
 }
-/**
- * Generic Sprite-With-Health class. Handles health & draws a health bar
- */
 class SpriteWithHealth
 {
     sprite: Sprite
@@ -33,9 +30,6 @@ class SpriteWithHealth
         return this.getHealth()
     }
 }
-/**
- * Player-Sprite class. Creates a PlayerSprite and handles input
- */
 class PlayerSprite extends SpriteWithHealth
 {
     constructor(img: Image, maxHealth: number, currentHealth: number)
@@ -45,9 +39,6 @@ class PlayerSprite extends SpriteWithHealth
         scene.cameraFollowSprite(this.sprite)
     }
 }
-/**
- * Creates and manages a health bar
- */
 class HealthBar
 {
     max: number
@@ -72,9 +63,6 @@ class HealthBar
         this.current = newHealth
     }
 }
-/**
- * Manages PowerUp types
- */
 class PowerUp
 {
     powerUpKinds = [assets.image``]
@@ -95,9 +83,9 @@ scene.setBackgroundColor(3)
 let player = new PlayerSprite(assets.image`heroWalkFront1`, 100, 100)
 tiles.tileAtLocationIsWall(tiles.getTileLocation(0, 0))
 tiles.tileAtLocationEquals(tiles.getTileLocation(0, 0), assets.tile`tileGrass1`)
-/**
- * Game loop. Needed to draw health bars
- */
-game.onUpdate(function() {
+
+// Game loop. Needed to draw health bars
+game.onUpdate(function () {
     player.drawHealthBar()
+    console.log(player.sprite.tileKindAt(TileDirection.Left, assets.image`hazardLava1`))
 })
