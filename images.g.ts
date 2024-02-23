@@ -22,6 +22,41 @@ namespace myImages {
 . . . . . f f f f f f . . . . . 
 . . . . . f f . . f f . . . . . 
 `;
+            case "image2":
+            case "shadow":return img`
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffff....ffffffffffffff
+fffffffffffff......fffffffffffff
+ffffffffffff........ffffffffffff
+ffffffffffff........ffffffffffff
+ffffffffffff........ffffffffffff
+ffffffffffff........ffffffffffff
+fffffffffffff......fffffffffffff
+ffffffffffffff....ffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffff
+`;
         }
         return null;
     })

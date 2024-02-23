@@ -1,6 +1,7 @@
 namespace SpriteKind {
     export const PowerUp = SpriteKind.create()
     export const HealthBar = SpriteKind.create()
+    export const Map = SpriteKind.create()
 }
 class SpriteWithHealth
 {
@@ -130,6 +131,7 @@ class MapData
     spawnY: number
     tilemap: tiles.TileMapData
     doors: number[]
+    shadow: Sprite
     
     constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: number[])
     {
@@ -157,6 +159,26 @@ class MapData
             }
         }
     }
+    draw()
+    {
+        if(currentMap == 2)
+        {
+            console.log("Current map == 2")
+            if(this.shadow == null)
+                this.shadow = sprites.create(assets.image`shadow`, SpriteKind.Map)
+            this.shadow.setPosition(player.sprite.x, player.sprite.y)
+            this.shadow.z = -1
+            this.shadow.setScale(8.75)
+        }
+    }
+    mapChanged()
+    {
+        if (this.shadow != null)
+        {
+            this.shadow.destroy()
+            this.shadow = null
+        }   
+    }
 }
 /**
  * Constants
@@ -170,7 +192,7 @@ let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
 
 let currentMap = 0
 scene.setTileMapLevel(assets.tilemap`level`)
-scene.setBackgroundColor(3)
+scene.setBackgroundColor(0)
 let player = new PlayerSprite(assets.image`heroWalkFront1`, 100, 100)
 player.sprite.setPosition(129.5,123.5)
 
@@ -180,6 +202,7 @@ controller.player1.onButtonEvent(ControllerButton.A, ControllerButtonEvent.Press
 
 function changeMap(toMap: number)
 {
+    MAP_DATAS[currentMap].mapChanged()
     currentMap = toMap
     scene.setTileMapLevel(MAP_DATAS[currentMap].tilemap)
     player.sprite.setPosition(MAP_DATAS[currentMap].spawnX, MAP_DATAS[currentMap].spawnY)
@@ -188,6 +211,7 @@ function changeMap(toMap: number)
 
 // Game loop. Needed to draw health bars
 game.onUpdate(function () {
+    MAP_DATAS[currentMap].draw()
     if(player != null)
         player.drawHealthBar()
         player.checkCollisions()    
