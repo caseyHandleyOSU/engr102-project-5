@@ -18,16 +18,23 @@ class SpriteWithHealth
     }
     drawHealthBar()
     {
-        this.healthBar.draw(this.sprite.x, this.sprite.y, this.sprite.image.height)
+        this.healthBar.draw(this.sprite.x, this.sprite.y, this.sprite.image.height, this.currentHealth)
     }
     getHealth()
     {
         return this.currentHealth
     }
+    /**
+     * Changes health by specified amount
+     */
     changeHealth(amount: number)
     {
-        this.currentHealth = Math.clamp(0, this.maxHealth, this.currentHealth - amount)
+        this.currentHealth = Math.clamp(0, this.maxHealth, this.currentHealth + amount)
         return this.getHealth()
+    }
+    checkCollisions()
+    {
+        // To be implemented on child classes
     }
 }
 class PlayerSprite extends SpriteWithHealth
@@ -37,6 +44,13 @@ class PlayerSprite extends SpriteWithHealth
         super(img, SpriteKind.Player, maxHealth, currentHealth)
         controller.moveSprite(this.sprite, 70, 70)
         scene.cameraFollowSprite(this.sprite)
+    }
+    checkCollisions()
+    {
+        if(this.sprite.tileKindAt(TileDirection.Center, assets.tile`hazardLava1`))
+        {
+            console.log(this.changeHealth(-1 * LAVA_DAMAGE))
+        }
     }
 }
 class HealthBar
@@ -50,8 +64,9 @@ class HealthBar
         this.max = maxHealth
         this.current = currentHealth
     }
-    draw(x: number, y: number, imgHeight: number)
+    draw(x: number, y: number, imgHeight: number, hp:number)
     {
+        this.current = hp
         let barImg = this.healthBar.image
         this.healthBar.setPosition(x, y + (imgHeight / 1.25))
         barImg.drawRect(1, 1, this.healthBar.width - 2, 2, 2)
@@ -78,14 +93,25 @@ class PowerUp
         // TODO: Implement powerup
     }
 }
-scene.setTileMapLevel(assets.tilemap`forestLevel`)
+/**
+ * Constants
+ */
+let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
+
+scene.setTileMapLevel(assets.tilemap`level`)
 scene.setBackgroundColor(3)
 let player = new PlayerSprite(assets.image`heroWalkFront1`, 100, 100)
+player.sprite.setPosition(129.5,123.5)
 tiles.tileAtLocationIsWall(tiles.getTileLocation(0, 0))
 tiles.tileAtLocationEquals(tiles.getTileLocation(0, 0), assets.tile`tileGrass1`)
+
+controller.player1.onButtonEvent(ControllerButton.A, ControllerButtonEvent.Pressed, function() {
+})
 
 // Game loop. Needed to draw health bars
 game.onUpdate(function () {
     player.drawHealthBar()
-    console.log(player.sprite.tileKindAt(TileDirection.Left, assets.image`hazardLava1`))
+    if(player != null)
+        player.checkCollisions()    
+    console.log(player.sprite.x + " " + player.sprite.y)
 })
