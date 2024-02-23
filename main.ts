@@ -36,6 +36,20 @@ class SpriteWithHealth
     {
         // To be implemented on child classes
     }
+    /**
+     * Returns a number >=0 if touching one of the types provided
+     */
+    touchingTileOfTypes(types: Image[])
+    {
+        for(let i = 0; i < types.length; i++)
+        {
+            if(this.sprite.tileKindAt(TileDirection.Center, types[i]))
+            {
+                return i
+            }
+        }
+        return -1
+    }
 }
 class PlayerSprite extends SpriteWithHealth
 {
@@ -50,6 +64,15 @@ class PlayerSprite extends SpriteWithHealth
         if(this.sprite.tileKindAt(TileDirection.Center, assets.tile`hazardLava1`))
         {
             console.log(this.changeHealth(-1 * LAVA_DAMAGE))
+        }
+        this.useDoor(this.touchingTileOfTypes([assets.tile`doorOpenNorth`, assets.tile`doorOpenEast`, assets.tile`doorOpenSouth`, assets.tile`doorOpenWest`]))
+
+    }
+    useDoor(direction: number)
+    {
+        if(direction > -1 && direction < 4)
+        {
+            changeMap(MAP_DESTINATIONS[currentMap][direction])
         }
     }
 }
@@ -96,22 +119,32 @@ class PowerUp
 /**
  * Constants
  */
+let MAPS = [assets.tilemap`level`,assets.tilemap`intersection`]
+let MAP_SPAWNS = [[129.5, 123.5], [129.5, 123.5]]
+let MAP_DESTINATIONS = [[1,0,0,0],[0,0,0,0]] // [N, E, S, W]
 let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
 
+let currentMap = 0
 scene.setTileMapLevel(assets.tilemap`level`)
 scene.setBackgroundColor(3)
 let player = new PlayerSprite(assets.image`heroWalkFront1`, 100, 100)
 player.sprite.setPosition(129.5,123.5)
-tiles.tileAtLocationIsWall(tiles.getTileLocation(0, 0))
-tiles.tileAtLocationEquals(tiles.getTileLocation(0, 0), assets.tile`tileGrass1`)
 
 controller.player1.onButtonEvent(ControllerButton.A, ControllerButtonEvent.Pressed, function() {
 })
+
+
+function changeMap(toMap: number)
+{
+    currentMap = toMap
+    scene.setTileMapLevel(MAPS[currentMap])
+    player.sprite.setPosition(MAP_SPAWNS[currentMap][0], MAP_SPAWNS[currentMap][1])
+}
 
 // Game loop. Needed to draw health bars
 game.onUpdate(function () {
     player.drawHealthBar()
     if(player != null)
         player.checkCollisions()    
-    console.log(player.sprite.x + " " + player.sprite.y)
+    //console.log(player.sprite.x + " " + player.sprite.y)
 })
