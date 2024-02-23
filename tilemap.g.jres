@@ -298,6 +298,32 @@
         ],
         "displayName": "level"
     },
+    "mazeR1": {
+        "id": "mazeR1",
+        "mimeType": "application/mkcd-tilemap",
+        "data": "MTAxMDAwMTAwMDAwMDAwMDAwMDAwMDAwMDMwMDAwMDAwMDAwMDAwMDAwMDYwNzA3MDcwNzA3MGYwMTBlMGYwMTA3MDAwMDAxMDAwOTAxMDEwMTAxMDEwMTAxMDEwMTAxMDEwMDAwMDEwMDEwMTExMTExMTExMTExMGIwMTAwMGIwMTAwMDAwMTAwMDAwMDAwMDAwMDAwMDAwOTAxMDAwMDAxMDAwMTAxMDAwMDAwMDAwMDAwMDAwMDA5MDEwMDAwMDAwMDAxMDAwMDA2MDcwNzA3MDgwMDAwMDkwMTBlMDAwMDAxMDEwMDAwMDUwMTAxMDEwYzAwMDAwOTAxMDEwMTAwMDAwMTAwMDAxMDExMGIwMTBjMDAwMDA5MDEwMDAwMDAwMDAxMDAwMDAwMDAwZDAxMGUwNzA3MGYwMTBlMDAwMDAwMDEwMTAyMDAwMDBkMDEwMTAxMDEwMTAxMDEwMTAwMDAwMDAxMDAwMDAwMGQwMTBhMTExMTExMTEwYjAxMDAwMDAwMDEwMDAwMDAwZDAxMGMwMDAwMDAwMDBkMDEwMDA3MDAwMTAwMDYwNzBmMDEwZTA3MDcwNzA3MGYwMTAxMDEwMTAxMDAwNTAxMDEwMTAxMDEwMTAxMDEwMTAxMDAwMDAwMDAwMDEwMTExMTExMTExMTExMTExMTA0MTEwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMA==",
+        "tileset": [
+            "myTiles.transparency16",
+            "myTiles.tile6",
+            "myTiles.tile16",
+            "myTiles.tile17",
+            "myTiles.tile18",
+            "myTiles.tile19",
+            "myTiles.tile27",
+            "myTiles.tile28",
+            "myTiles.tile30",
+            "myTiles.tile31",
+            "myTiles.tile32",
+            "myTiles.tile33",
+            "myTiles.tile34",
+            "myTiles.tile35",
+            "myTiles.tile36",
+            "myTiles.tile37",
+            "myTiles.tile39",
+            "myTiles.tile41"
+        ],
+        "displayName": "mazeR"
+    },
     "*": {
         "mimeType": "image/x-mkcd-f4",
         "dataEncoding": "base64",

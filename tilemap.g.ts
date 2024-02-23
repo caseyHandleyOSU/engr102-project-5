@@ -127,6 +127,25 @@ namespace myTiles {
 . . . . . . . . . . . . . . . . 
 . . . . . . . . . . . . . . . . 
 `, [myTiles.transparency16,myTiles.tile2,myTiles.tile6,myTiles.tile16,myTiles.tile17,myTiles.tile18,myTiles.tile19], TileScale.Sixteen);
+            case "mazeR":
+            case "mazeR1":return tiles.createTilemap(hex`10001000000000000000000300000000000000000607070707070f010e0f01070000010009010101010101010101010100000100101111111111110b01000b010000010000000000000000090100000100010100000000000000000901000000000100000607070708000009010e000001010000050101010c000009010101000001000010110b010c000009010000000001000000000d010e07070f010e00000001010200000d0101010101010101000000010000000d010a111111110b01000000010000000d010c000000000d01000700010006070f010e070707070f0101010101000501010101010101010101000000000010111111111111111104110000000000`, img`
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+`, [myTiles.transparency16,myTiles.tile6,myTiles.tile16,myTiles.tile17,myTiles.tile18,myTiles.tile19,myTiles.tile27,myTiles.tile28,myTiles.tile30,myTiles.tile31,myTiles.tile32,myTiles.tile33,myTiles.tile34,myTiles.tile35,myTiles.tile36,myTiles.tile37,myTiles.tile39,myTiles.tile41], TileScale.Sixteen);
         }
         return null;
     })

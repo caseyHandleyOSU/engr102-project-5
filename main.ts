@@ -37,7 +37,7 @@ class SpriteWithHealth
         // To be implemented on child classes
     }
     /**
-     * Returns a number >=0 if touching one of the types provided
+     * Returns a number >=0 if touching one of the types provided. -1 if touching nothing
      */
     touchingTileOfTypes(types: Image[])
     {
@@ -72,8 +72,14 @@ class PlayerSprite extends SpriteWithHealth
     {
         if(direction > -1 && direction < 4)
         {
-            changeMap(MAP_DESTINATIONS[currentMap][direction])
+            changeMap(MAP_DATAS[currentMap].doors[direction])
         }
+    }
+}
+class Enemy extends SpriteWithHealth
+{
+    constructor(img: Image, maxHealth: number, currentHealth: number) {
+        super(img, SpriteKind.Enemy, maxHealth, currentHealth)
     }
 }
 class HealthBar
@@ -116,12 +122,50 @@ class PowerUp
         // TODO: Implement powerup
     }
 }
+class MapData
+{
+    enemies: Enemy[]
+    powerUps: PowerUp[]
+    spawnX: number
+    spawnY: number
+    tilemap: tiles.TileMapData
+    doors: number[]
+    
+    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: number[])
+    {
+        this.spawnX = spawnX
+        this.spawnY = spawnY
+        this.tilemap = tilemap
+        this.doors = doors
+    }
+    addEnemy(enemy: Enemy)
+    {
+        this.enemies.push(enemy)
+    }
+    removeEnemyIndex(index: number)
+    {
+        this.enemies.removeAt(index)
+    }
+    removeEnemy(enemy: Enemy)
+    {
+        for(let i = 0; i < this.enemies.length; i++)
+        {
+            if(this.enemies[i] = enemy)
+            {
+                this.removeEnemyIndex(i)
+                break
+            }
+        }
+    }
+}
 /**
  * Constants
  */
-let MAPS = [assets.tilemap`level`,assets.tilemap`intersection`]
-let MAP_SPAWNS = [[129.5, 123.5], [129.5, 123.5]]
-let MAP_DESTINATIONS = [[1,0,0,0],[0,0,0,0]] // [N, E, S, W]
+let MAP_DATAS = [new MapData(129.5, 123.5, assets.tilemap`level`, [1, 2, 0, 0]), 
+    new MapData(129.5, 123.5, assets.tilemap`intersection`, [0, 0, 0, 0]),
+    new MapData(39, 119, assets.tilemap`mazeR`, [1, 0, 0, 0])
+]
+
 let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
 
 let currentMap = 0
@@ -137,14 +181,15 @@ controller.player1.onButtonEvent(ControllerButton.A, ControllerButtonEvent.Press
 function changeMap(toMap: number)
 {
     currentMap = toMap
-    scene.setTileMapLevel(MAPS[currentMap])
-    player.sprite.setPosition(MAP_SPAWNS[currentMap][0], MAP_SPAWNS[currentMap][1])
+    scene.setTileMapLevel(MAP_DATAS[currentMap].tilemap)
+    player.sprite.setPosition(MAP_DATAS[currentMap].spawnX, MAP_DATAS[currentMap].spawnY)
+    // TODO: Hide/Show PowerUps and Enemies on map change
 }
 
 // Game loop. Needed to draw health bars
 game.onUpdate(function () {
-    player.drawHealthBar()
     if(player != null)
+        player.drawHealthBar()
         player.checkCollisions()    
-    //console.log(player.sprite.x + " " + player.sprite.y)
+    console.log(player.sprite.x + " " + player.sprite.y)
 })
