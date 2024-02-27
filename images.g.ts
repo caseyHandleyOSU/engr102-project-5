@@ -57,6 +57,25 @@ ffffffffffffffffffffffffffffffff
 ffffffffffffffffffffffffffffffff
 ffffffffffffffffffffffffffffffff
 `;
+            case "image3":
+            case "keyImage":return img`
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. 5 5 . . . . . . . . . . . . . 
+5 . . 5 5 5 5 5 5 5 5 5 5 5 . . 
+5 . . 5 . . . 5 . 5 . 5 . 5 . . 
+. 5 5 . . . . . . . . . . 5 . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+. . . . . . . . . . . . . . . . 
+`;
         }
         return null;
     })

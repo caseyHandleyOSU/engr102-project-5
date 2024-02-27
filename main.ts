@@ -2,6 +2,7 @@ namespace SpriteKind {
     export const PowerUp = SpriteKind.create()
     export const HealthBar = SpriteKind.create()
     export const Map = SpriteKind.create()
+    export const Key = SpriteKind.create()
 }
 class SpriteWithHealth
 {
@@ -123,22 +124,69 @@ class PowerUp
         // TODO: Implement powerup
     }
 }
+class Key
+{
+    x: number
+    y: number
+    doorID: number
+    sprite: Sprite = null
+
+    constructor(x: number, y: number, doorID: number)
+    {
+        this.x = x
+        this.y = y
+        this.doorID = doorID
+        console.log("Created key!")
+        this.createSprite()
+    }
+
+    createSprite()
+    {
+        console.log("Creating Sprite!")
+        this.destroySprite()
+        this.sprite = sprites.create(assets.image`keyImage`, SpriteKind.Key)
+        this.sprite.setPosition(this.x, this.y)
+    }
+    destroySprite()
+    {
+        if (this.sprite != null) {
+            this.sprite.destroy()
+        }
+    }
+}
 class MapData
 {
-    enemies: Enemy[]
-    powerUps: PowerUp[]
+    /**
+     * Map Sprite Control
+     */
+    enemies: Enemy[] = []
+    powerUps: PowerUp[] = []
+    shadow: Sprite
+    keys: Key[] = []
+
+    /**
+     * Map Data Values
+     */
     spawnX: number
     spawnY: number
-    tilemap: tiles.TileMapData
     doors: number[]
-    shadow: Sprite
+    shadowScale: number
+    tilemap: tiles.TileMapData
+    keyLocations: number[][]
+
+    /** 
+     * Setup
+     */
+    setup: boolean
     
-    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: number[])
+    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: number[], usesShadow: number, keys: number[][])
     {
         this.spawnX = spawnX
         this.spawnY = spawnY
         this.tilemap = tilemap
         this.doors = doors
+        this.shadowScale = usesShadow
+        this.keyLocations = keys
     }
     addEnemy(enemy: Enemy)
     {
@@ -161,14 +209,13 @@ class MapData
     }
     draw()
     {
-        if(currentMap == 2)
+        if(this.shadowScale > 0)
         {
-            console.log("Current map == 2")
             if(this.shadow == null)
                 this.shadow = sprites.create(assets.image`shadow`, SpriteKind.Map)
             this.shadow.setPosition(player.sprite.x, player.sprite.y)
             this.shadow.z = -1
-            this.shadow.setScale(8.75)
+            this.shadow.setScale(this.shadowScale)
         }
     }
     mapChanged()
@@ -177,15 +224,36 @@ class MapData
         {
             this.shadow.destroy()
             this.shadow = null
-        }   
+        }
+        // Destroy all key sprites
+        for(let i = 0; i < this.keys.length; i++)
+        {
+            this.keys[i].destroySprite()
+        }
+    }
+    setActiveMap()
+    {
+        if(!this.setup)
+        {
+            for (let i = 0; i < this.keyLocations.length; i++) {
+                console.log(i + " " + this.keyLocations[i][0] + " " + this.keyLocations[i][1] + " " + this.keyLocations[i][2])
+                let keyBuilder = new Key(this.keyLocations[i][0], this.keyLocations[i][1], this.keyLocations[i][2])
+                keyBuilder.createSprite()
+                this.keys.push(keyBuilder)
+            }
+        }
+        else // Returning to board
+        {
+            // TODO: Rebuild keys, enemies, etc
+        }
     }
 }
 /**
  * Constants
  */
-let MAP_DATAS = [new MapData(129.5, 123.5, assets.tilemap`level`, [1, 2, 0, 0]), 
-    new MapData(129.5, 123.5, assets.tilemap`intersection`, [0, 0, 0, 0]),
-    new MapData(39, 119, assets.tilemap`mazeR`, [1, 0, 0, 0])
+let MAP_DATAS = [new MapData(129.5, 123.5, assets.tilemap`level`, [1, 2, 0, 0], 0, [[]]), 
+    new MapData(129.5, 123.5, assets.tilemap`intersection`, [0, 0, 0, 0], 0, [[]]),
+    new MapData(39, 119, assets.tilemap`mazeR`, [1, 0, 0, 0], 8.75, [[230, 24, 0]])
 ]
 
 let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
@@ -204,6 +272,7 @@ function changeMap(toMap: number)
 {
     MAP_DATAS[currentMap].mapChanged()
     currentMap = toMap
+    MAP_DATAS[currentMap].setActiveMap()
     scene.setTileMapLevel(MAP_DATAS[currentMap].tilemap)
     player.sprite.setPosition(MAP_DATAS[currentMap].spawnX, MAP_DATAS[currentMap].spawnY)
     // TODO: Hide/Show PowerUps and Enemies on map change
@@ -215,5 +284,5 @@ game.onUpdate(function () {
     if(player != null)
         player.drawHealthBar()
         player.checkCollisions()    
-    console.log(player.sprite.x + " " + player.sprite.y)
+    //console.log(player.sprite.x + " " + player.sprite.y)
 })

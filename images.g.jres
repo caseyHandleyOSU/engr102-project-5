@@ -9,6 +9,11 @@
         "mimeType": "image/x-mkcd-f4",
         "displayName": "shadow"
     },
+    "image3": {
+        "data": "hwQQABAAAAAAAABQBQAAAAAAAAVQAAAAAAAABVAAAAAAAABQBQAAAAAAAFAAAAAAAAAAUAAAAAAAAABQAAAAAAAAAFAFAAAAAAAAUAAAAAAAAABQBQAAAAAAAFAAAAAAAAAAUAUAAAAAAABQAAAAAAAAAFBVAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+        "mimeType": "image/x-mkcd-f4",
+        "displayName": "keyImage"
+    },
     "*": {
         "mimeType": "image/x-mkcd-f4",
         "dataEncoding": "base64",
