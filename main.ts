@@ -37,6 +37,9 @@ class SpriteWithHealth
         this.currentHealth = Math.clamp(0, this.maxHealth, this.currentHealth + amount)
         return this.getHealth()
     }
+    /**
+     * Handles collisions with Tiles, such as in the case of lava or doors
+     */
     checkCollisions()
     {
         // To be implemented on child classes
@@ -77,7 +80,7 @@ class PlayerSprite extends SpriteWithHealth
     {
         if(direction > -1 && direction < 4)
         {
-            changeMap(MAP_DATAS[currentMap].doors[direction])
+            MAP_DATAS[currentMap].tryUseDoor(direction)
         }
     }
     applyPowerUp(kind: number)
@@ -315,6 +318,10 @@ class MapData
         }      
         else
             console.log("Unable to find SpawnableObject from handleItemCollision")
+    }
+    tryUseDoor(door: number)
+    {
+        changeMap(MAP_DATAS[currentMap].doors[door])
     }
 }
 /**
