@@ -3,6 +3,7 @@ namespace SpriteKind {
     export const HealthBar = SpriteKind.create()
     export const Map = SpriteKind.create()
     export const Spawnable = SpriteKind.create()
+    export const Init = SpriteKind.create()
 }
 const PowerUpKinds = {
     Heart: 0
@@ -47,17 +48,6 @@ class SpriteWithHealth
     /**
      * Returns a number >=0 if touching one of the types provided. -1 if touching nothing
      */
-    touchingTileOfTypes(types: Image[])
-    {
-        for(let i = 0; i < types.length; i++)
-        {
-            if(this.sprite.tileKindAt(TileDirection.Center, types[i]))
-            {
-                return i
-            }
-        }
-        return -1
-    }
 }
 class PlayerSprite extends SpriteWithHealth
 {
@@ -73,7 +63,7 @@ class PlayerSprite extends SpriteWithHealth
         {
             console.log(this.changeHealth(-1 * LAVA_DAMAGE))
         }
-        this.useDoor(this.touchingTileOfTypes([assets.tile`doorOpenNorth`, assets.tile`doorOpenEast`, assets.tile`doorOpenSouth`, assets.tile`doorOpenWest`]))
+        this.useDoor(touchingTileOfTypes(this.sprite, [assets.tile`doorOpenNorth`, assets.tile`doorOpenEast`, assets.tile`doorOpenSouth`, assets.tile`doorOpenWest`]))
 
     }
     useDoor(direction: number)
@@ -187,6 +177,60 @@ class Key extends SpawnableObject
         player.sprite.sayText("I found a key!", 5000.0)
     }
 }
+class DoorData
+{
+    /**
+     * Constants
+     */
+    LOCKED_TILES = [assets.tile`doorOpenNorth`, assets.tile`doorOpenEast`, assets.tile`doorOpenSouth`, assets.tile`doorOpenWest`]
+    UNLOCKED_TILES = [assets.tile`doorLockedNorth`, assets.tile`doorLockedEast`, assets.tile`doorLockedSouth`, assets.tile`doorLockedWest`]
+
+    x: number // Tilemap X
+    y: number // Tilemap Y
+    id: number
+    destination: number[] // Map, x, y
+    myDirection: number
+    isLocked: boolean
+
+    constructor(x: number, y: number, id: number, destination: number[], locked: boolean)
+    {
+        this.x = x
+        this.y = y
+        this.id = id
+        this.destination = destination
+        this.isLocked = locked
+    }
+    useDoor()
+    {
+        MAP_DATAS[currentMap].mapChanged()
+        currentMap = this.destination[0]
+        MAP_DATAS[currentMap].setActiveMap()
+        player.sprite.setPosition(this.destination[1], this.destination[2])
+    }
+    /**
+     * Finds the direction of this specific door
+     */
+    findDoorDirection()
+    {
+        let doorHelper = sprites.create(assets.image`doorOpenEast`, SpriteKind.Init)
+        doorHelper.setPosition(this.x * 16, this.y * 16)
+        // Get the direction of this door
+        if(touchingTileOfTypes(doorHelper, this.UNLOCKED_TILES) != -1)
+            this.myDirection = touchingTileOfTypes(doorHelper, this.UNLOCKED_TILES)
+        else if(touchingTileOfTypes(doorHelper, this.LOCKED_TILES) != -1)
+            this.myDirection = touchingTileOfTypes(doorHelper, this.LOCKED_TILES)
+        
+        doorHelper.destroy()
+        this.updateDoorTile()
+    }
+    updateDoorTile()
+    {
+        if(this.isLocked)
+            tiles.setTileAt(tiles.getTileLocation(this.x, this.y), this.LOCKED_TILES[this.myDirection])
+        else
+            tiles.setTileAt(tiles.getTileLocation(this.x, this.y), this.UNLOCKED_TILES[this.myDirection])
+    }
+}
 class MapData
 {
     /**
@@ -271,6 +315,7 @@ class MapData
     }
     setActiveMap()
     {
+        scene.setTileMapLevel(this.tilemap)
         if(!this.setup)
         {
             // Generate Keys
@@ -327,7 +372,7 @@ class MapData
 /**
  * Constants
  */
-let MAP_DATAS = [new MapData(129.5, 123.5, assets.tilemap`level`, [1, 2, 0, 0], 0, [[]]), 
+let MAP_DATAS = [new MapData(129.5, 123.5, assets.tilemap`CrossRoadsLarge`, [1, 2, 0, 0], 0, [[]]),
     new MapData(129.5, 123.5, assets.tilemap`intersection`, [0, 0, 0, 0], 0, [[]]),
     new MapData(39, 119, assets.tilemap`mazeR`, [1, 0, 0, 0], 8.75, [[230, 24, 0]])
 ]
@@ -335,10 +380,11 @@ let MAP_DATAS = [new MapData(129.5, 123.5, assets.tilemap`level`, [1, 2, 0, 0], 
 let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
 
 let currentMap = 0
-scene.setTileMapLevel(assets.tilemap`level`)
+scene.setTileMapLevel(assets.tilemap`CrossRoadsLarge`)
 scene.setBackgroundColor(0)
 let player = new PlayerSprite(assets.image`heroWalkFront1`, 100, 100)
 player.sprite.setPosition(129.5,123.5)
+tiles.setTileAt(tiles.getTileLocation(0, 16), assets.tile`doorOpenWest`)
 
 controller.player1.onButtonEvent(ControllerButton.A, ControllerButtonEvent.Pressed, function() {
 })
@@ -352,6 +398,15 @@ function changeMap(toMap: number)
     scene.setTileMapLevel(MAP_DATAS[currentMap].tilemap)
     player.sprite.setPosition(MAP_DATAS[currentMap].spawnX, MAP_DATAS[currentMap].spawnY)
     // TODO: Hide/Show PowerUps and Enemies on map change
+}
+
+function touchingTileOfTypes(sprite: Sprite, types: Image[]) {
+    for (let i = 0; i < types.length; i++) {
+        if (sprite.tileKindAt(TileDirection.Center, types[i])) {
+            return i
+        }
+    }
+    return -1
 }
 
 // Game loop. Needed to draw health bars
