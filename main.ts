@@ -80,6 +80,10 @@ class PlayerSprite extends SpriteWithHealth
             changeMap(MAP_DATAS[currentMap].doors[direction])
         }
     }
+    applyPowerUp(kind: number)
+    {
+        // TODO :: Implement Power Ups
+    }
 }
 class Enemy extends SpriteWithHealth
 {
@@ -151,14 +155,14 @@ class PowerUp extends SpawnableObject
 {
     powerUpKinds = [assets.image``]
     pType: number
-    constructor(pType: number)
+    constructor(x:number, y: number, pType: number)
     {
-        super(0,0,assets.image`TODO`)
+        super(x,y,assets.image`TODO`)
         this.pType = pType
     }
     handleCollision(player: PlayerSprite)
     {
-        // TODO: Implement powerup
+        player.applyPowerUp(this.pType)
     }
 }
 class Key extends SpawnableObject
@@ -176,7 +180,8 @@ class Key extends SpawnableObject
 
     handleCollision(player: PlayerSprite)
     {
-        console.log("Player collided with a key!")
+        this.destroySprite()
+        player.sprite.sayText("I found a key!", 5000.0)
     }
 }
 class MapData
