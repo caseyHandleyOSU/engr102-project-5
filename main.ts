@@ -2,7 +2,10 @@ namespace SpriteKind {
     export const PowerUp = SpriteKind.create()
     export const HealthBar = SpriteKind.create()
     export const Map = SpriteKind.create()
-    export const Key = SpriteKind.create()
+    export const Spawnable = SpriteKind.create()
+}
+const PowerUpKinds = {
+    Heart: 0
 }
 class SpriteWithHealth
 {
@@ -109,30 +112,61 @@ class HealthBar
         this.current = newHealth
     }
 }
-class PowerUp
+class SpawnableObject
+{
+    x: number
+    y: number
+    SPRITE_KIND: number = SpriteKind.Spawnable
+    img: Image
+    sprite: Sprite = null
+
+    constructor(x: number, y: number, img: Image) {
+        this.setPos(x,y)
+        this.img = img
+    }
+
+    setPos(x: number, y: number)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    createSprite() {
+        console.log("Creating Sprite!")
+        this.destroySprite()
+        this.sprite = sprites.create(this.img, this.SPRITE_KIND)
+        this.sprite.setPosition(this.x, this.y)
+    }
+    destroySprite() {
+        if (this.sprite != null) {
+            this.sprite.destroy()
+        }
+    }
+    handleCollision(player: PlayerSprite)
+    {
+        // ABSTRACT :: Implement on children!
+    }
+}
+class PowerUp extends SpawnableObject
 {
     powerUpKinds = [assets.image``]
-    sprite: Sprite
-    kind: number
-    constructor(kind: number)
+    pType: number
+    constructor(pType: number)
     {
-        this.kind = kind
-        this.sprite = sprites.create(this.powerUpKinds[kind], SpriteKind.PowerUp)
+        super(0,0,assets.image`TODO`)
+        this.pType = pType
     }
-    handleOverlapped(player: SpriteWithHealth)
+    handleCollision(player: PlayerSprite)
     {
         // TODO: Implement powerup
     }
 }
-class Key
+class Key extends SpawnableObject
 {
-    x: number
-    y: number
     doorID: number
-    sprite: Sprite = null
 
-    constructor(x: number, y: number, doorID: number)
-    {
+    constructor(x: number, y: number, doorID: number) {
+        super(x, y, assets.image`keyImage`)
         this.x = x
         this.y = y
         this.doorID = doorID
@@ -140,18 +174,9 @@ class Key
         this.createSprite()
     }
 
-    createSprite()
+    handleCollision(player: PlayerSprite)
     {
-        console.log("Creating Sprite!")
-        this.destroySprite()
-        this.sprite = sprites.create(assets.image`keyImage`, SpriteKind.Key)
-        this.sprite.setPosition(this.x, this.y)
-    }
-    destroySprite()
-    {
-        if (this.sprite != null) {
-            this.sprite.destroy()
-        }
+        console.log("Player collided with a key!")
     }
 }
 class MapData
@@ -162,7 +187,7 @@ class MapData
     enemies: Enemy[] = []
     powerUps: PowerUp[] = []
     shadow: Sprite
-    keys: Key[] = []
+    keys: SpawnableObject[] = []
 
     /**
      * Map Data Values
@@ -173,6 +198,11 @@ class MapData
     shadowScale: number
     tilemap: tiles.TileMapData
     keyLocations: number[][]
+
+    /**
+     * Runtime Values
+     */
+    usedObjects: SpawnableObject[] = []
 
     /** 
      * Setup
@@ -235,17 +265,51 @@ class MapData
     {
         if(!this.setup)
         {
+            // Generate Keys
             for (let i = 0; i < this.keyLocations.length; i++) {
                 console.log(i + " " + this.keyLocations[i][0] + " " + this.keyLocations[i][1] + " " + this.keyLocations[i][2])
                 let keyBuilder = new Key(this.keyLocations[i][0], this.keyLocations[i][1], this.keyLocations[i][2])
                 keyBuilder.createSprite()
                 this.keys.push(keyBuilder)
             }
+
+            this.setup = true
         }
         else // Returning to board
         {
-            // TODO: Rebuild keys, enemies, etc
+            // Regenerate keys
+            for(let i = 0; i < this.keys.length; i++)
+            {
+                if (this.usedObjects.indexOf(this.keys[i]) == -1) // Prevent key from regenerating if it's been claimed already
+                    this.keys[i].createSprite()
+            }
         }
+    }
+    findSpawnableFromSprite(sprite: Sprite): SpawnableObject
+    {
+        // Search Keys
+        for(let i = 0; i < this.keys.length; i++)
+        {
+            let key = this.keys[i]
+            if(key.x == sprite.x && key.y == sprite.y)
+                return key
+        }
+        // TODO: Search powerups
+
+        // Return null if it doesn't match anything
+        return null
+    }
+
+    handleItemCollision(item: Sprite, player: PlayerSprite)
+    {
+        let spawnable: SpawnableObject = this.findSpawnableFromSprite(item)
+        if (spawnable != null)
+        {
+            spawnable.handleCollision(player)
+            this.usedObjects.push(spawnable)
+        }      
+        else
+            console.log("Unable to find SpawnableObject from handleItemCollision")
     }
 }
 /**
@@ -285,4 +349,8 @@ game.onUpdate(function () {
         player.drawHealthBar()
         player.checkCollisions()    
     //console.log(player.sprite.x + " " + player.sprite.y)
+})
+
+sprites.onOverlap(SpriteKind.Spawnable, SpriteKind.Player, function(spawnable: Sprite, plr: Sprite) {
+    MAP_DATAS[currentMap].handleItemCollision(spawnable, player)
 })
