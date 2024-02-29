@@ -80,8 +80,10 @@ class PlayerSprite extends SpriteWithHealth
 }
 class Enemy extends SpriteWithHealth
 {
-    constructor(img: Image, maxHealth: number, currentHealth: number) {
+    destroyOnCollide: boolean = false
+    constructor(img: Image, maxHealth: number, currentHealth: number, destroyOnCollide: boolean) {
         super(img, SpriteKind.Enemy, maxHealth, currentHealth)
+        this.destroyOnCollide = destroyOnCollide
     }
 }
 class HealthBar
@@ -251,12 +253,136 @@ class DoorData
         this.updateDoorTile()
     }
 }
+class EnemySpawner
+{
+    /**
+     * 
+     */
+    spawnLocations: number[][]
+    spawnedEnemies: Enemy[] = []
+    img: Image
+    maxHP: number
+    startingHP: number
+    spawningEnabled: boolean
+    spawnDelay: number
+    lastSpawnTime: number = 0
+    destroyOnCollision: boolean
+
+    constructor(img: Image, maxHP: number, startingHP: number, spawnDelay: number, locations: number[][], destroyOnCollision: boolean)
+    {
+        this.img = img
+        this.maxHP = maxHP
+        this.startingHP = startingHP
+        this.spawnDelay = spawnDelay
+        this.spawnLocations = locations
+        this.destroyOnCollision = destroyOnCollision
+    }
+    startSpawning()
+    {
+        this.spawningEnabled = true
+        this.trySpawn(true)
+        this.loopSpawn()
+    }
+    /**
+     * External call for spawning
+     */
+    callSpawn()
+    {
+        this.trySpawn(false)
+    }
+    loopSpawn()
+    {
+        game.onUpdateInterval(this.spawnDelay, function () {
+            if(this.spawningEnabled)
+                this.callSpawn()
+        })
+    }
+    trySpawn(firstSpawn: boolean)
+    {
+        if(this.spawningEnabled)
+        {
+            if (firstSpawn || this.lastSpawnTime + this.spawnDelay <= game.runtime())
+            {
+                let newEnemy = new Enemy(this.img, this.maxHP, this.startingHP, this.destroyOnCollision)
+                this.applyAI(newEnemy)
+                let location = this.spawnLocations[Math.floor(Math.random() * this.spawnLocations.length)]
+                newEnemy.sprite.setPosition(location[0], location[1])
+                newEnemy.sprite.setStayInScreen(false)
+                this.spawnedEnemies.push(newEnemy)
+            }
+            //this.callSpawn()
+        }
+    }
+    stopSpawning()
+    {
+        this.spawningEnabled = false
+    }
+    clear()
+    {
+        for(let i = this.spawnedEnemies.length-1; i >= 0; i--)
+        {
+            this.spawnedEnemies.pop().sprite.destroy()
+        }
+    }
+    applyAI(enemy: Enemy)
+    {
+
+    }
+
+    handleAI()
+    {
+        // ABSTRACT: Implemented in subclasses
+    }
+    findEnemiesFromSprites(e1: Sprite, e2: Sprite): Enemy[]
+    {
+        let enemy1: Enemy = undefined
+        let enemy2: Enemy = undefined
+        this.spawnedEnemies.forEach(function (enemy: Enemy) {
+            if (enemy.sprite == e1)
+                enemy1 = enemy
+            else if (enemy.sprite == e2)
+                enemy2 = enemy
+        })
+
+        return [enemy1, enemy2]
+    }
+    notifyCollide(e1: Sprite, e2: Sprite)
+    {
+        // ABSTRACT
+    }
+}
+class FollowerSpawner extends EnemySpawner
+{
+    constructor(locations: number[][])
+    {
+        super(assets.image`skellyFront`, 1, 1, 1000, locations, true)
+    }
+    applyAI(enemy: Enemy)
+    {
+        enemy.sprite.follow(player.sprite, 50, 300)
+    }
+    handleAI()
+    {
+
+    }
+    notifyCollide(e1: Sprite, e2: Sprite)
+    {
+        let enemies = this.findEnemiesFromSprites(e1, e2)
+        if (enemies[0] != undefined)
+            if(enemies[0].destroyOnCollide)
+                enemies[0].sprite.destroy()
+    
+        if (enemies[1] != undefined)
+            if(enemies[1].destroyOnCollide)
+                enemies[1].sprite.destroy()
+    }
+}
 class MapData
 {
     /**
      * Map Sprite Control
      */
-    enemies: Enemy[] = []
+    spawners: EnemySpawner[] = []
     powerUps: PowerUp[] = []
     shadow: Sprite
     keys: SpawnableObject[] = []
@@ -282,7 +408,7 @@ class MapData
      */
     setup: boolean
     
-    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: DoorData[], usesShadow: number, keys: Key[])
+    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: DoorData[], usesShadow: number, keys: Key[], spawners: EnemySpawner[])
     {
         this.spawnX = spawnX
         this.spawnY = spawnY
@@ -290,25 +416,27 @@ class MapData
         this.doors = doors
         this.shadowScale = usesShadow
         this.keys = keys
+        this.spawners = spawners
+        this.mapChanged()
     }
     addEnemy(enemy: Enemy)
     {
-        this.enemies.push(enemy)
+        //this.enemies.push(enemy)
     }
     removeEnemyIndex(index: number)
     {
-        this.enemies.removeAt(index)
+        //this.enemies.removeAt(index)
     }
     removeEnemy(enemy: Enemy)
     {
-        for(let i = 0; i < this.enemies.length; i++)
+        /*for(let i = 0; i < this.enemies.length; i++)
         {
             if(this.enemies[i] = enemy)
             {
                 this.removeEnemyIndex(i)
                 break
             }
-        }
+        }*/
     }
     draw()
     {
@@ -333,6 +461,10 @@ class MapData
         {
             this.keys[i].destroySprite()
         }
+        this.spawners.forEach(function (spawner: EnemySpawner) {
+            spawner.stopSpawning()
+            spawner.clear()
+        })
     }
     setActiveMap()
     {
@@ -342,24 +474,20 @@ class MapData
         })
         if(!this.setup)
         {
-            /** Generate Keys
-            for (let i = 0; i < this.keyLocations.length; i++) {
-                console.log(i + " " + this.keyLocations[i][0] + " " + this.keyLocations[i][1] + " " + this.keyLocations[i][2])
-                let keyBuilder = new Key(this.keyLocations[i][0], this.keyLocations[i][1], this.keyLocations[i][2])
-                keyBuilder.createSprite()
-                this.keys.push(keyBuilder)
-            }*/
-
+            this.spawners.forEach(function(spawner: EnemySpawner){
+                spawner.startSpawning()
+            })
             this.setup = true
         }
         else // Returning to board
         {
-            // Regenerate keys
-            for(let i = 0; i < this.keys.length; i++)
-            {
-                if (this.usedObjects.indexOf(this.keys[i]) == -1) // Prevent key from regenerating if it's been claimed already
-                    this.keys[i].createSprite()
-            }
+            
+            
+        }
+        // Regenerate keys
+        for (let i = 0; i < this.keys.length; i++) {
+            if (this.usedObjects.indexOf(this.keys[i]) == -1) // Prevent key from regenerating if it's been claimed already
+                this.keys[i].createSprite()
         }
     }
     findSpawnableFromSprite(sprite: Sprite): SpawnableObject
@@ -394,6 +522,12 @@ class MapData
         else
             console.log("Unable to find SpawnableObject from handleItemCollision")
     }
+    handleEnemyCollision(enemy1: Sprite, enemy2: Sprite)
+    {
+        this.spawners.forEach(function (spawner: EnemySpawner) {
+            spawner.notifyCollide(enemy1, enemy2)
+        })
+    }
     tryUseDoor(door: number[])
     {
         this.doors.forEach(function (data: DoorData, index: number)
@@ -420,9 +554,9 @@ class MapData
 /**
  * Constants
  */
-let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true,3), new DoorData(0.5, 15.5, [], true,3)], 0, []),
-    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, []),
-    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5,7.5,[0,490,248], false, 4)], 8.75, [new Key(230, 24, [0, 0])])
+let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true,3), new DoorData(0.5, 15.5, [], true,3)], 0, [], [new FollowerSpawner([[0,0],[50,50]])]),
+    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [], []),
+    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4)], 8.75, [new Key(230, 24, [0, 0])], [])
 ]
 
 let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
@@ -468,4 +602,7 @@ game.onUpdate(function () {
 
 sprites.onOverlap(SpriteKind.Spawnable, SpriteKind.Player, function(spawnable: Sprite, plr: Sprite) {
     MAP_DATAS[currentMap].handleItemCollision(spawnable, player)
+})
+sprites.onOverlap(SpriteKind.Enemy, SpriteKind.Enemy, function (enemy1: Sprite, enemy2: Sprite) {
+    MAP_DATAS[currentMap].handleEnemyCollision(enemy1, enemy2)
 })
