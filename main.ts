@@ -70,7 +70,7 @@ class PlayerSprite extends SpriteWithHealth
     {
         if(direction > -1 && direction < 4)
         {
-            MAP_DATAS[currentMap].tryUseDoor(direction)
+            MAP_DATAS[currentMap].tryUseDoor([this.sprite.tilemapLocation().x / 16, this.sprite.tilemapLocation().y/16])
         }
     }
     applyPowerUp(kind: number)
@@ -182,8 +182,8 @@ class DoorData
     /**
      * Constants
      */
-    LOCKED_TILES = [assets.tile`doorOpenNorth`, assets.tile`doorOpenEast`, assets.tile`doorOpenSouth`, assets.tile`doorOpenWest`]
-    UNLOCKED_TILES = [assets.tile`doorLockedNorth`, assets.tile`doorLockedEast`, assets.tile`doorLockedSouth`, assets.tile`doorLockedWest`]
+    UNLOCKED_TILES = [assets.tile`doorOpenNorth`, assets.tile`doorOpenEast`, assets.tile`doorOpenSouth`, assets.tile`doorOpenWest`]
+    LOCKED_TILES = [assets.tile`doorLockedNorth`, assets.tile`doorLockedEast`, assets.tile`doorLockedSouth`, assets.tile`doorLockedWest`]
 
     x: number // Tilemap X
     y: number // Tilemap Y
@@ -192,11 +192,11 @@ class DoorData
     myDirection: number
     isLocked: boolean
 
-    constructor(x: number, y: number, id: number, destination: number[], locked: boolean)
+    constructor(x: number, y: number, destination: number[], locked: boolean)
     {
         this.x = x
         this.y = y
-        this.id = id
+        //this.id = id
         this.destination = destination
         this.isLocked = locked
     }
@@ -205,30 +205,40 @@ class DoorData
         MAP_DATAS[currentMap].mapChanged()
         currentMap = this.destination[0]
         MAP_DATAS[currentMap].setActiveMap()
-        player.sprite.setPosition(this.destination[1], this.destination[2])
+        if (this.destination[1] > -1 && this.destination[2] > -1)
+            player.sprite.setPosition(this.destination[1], this.destination[2])
+        else
+            player.sprite.setPosition(MAP_DATAS[currentMap].spawnX, MAP_DATAS[currentMap].spawnY)
     }
     /**
      * Finds the direction of this specific door
      */
     findDoorDirection()
     {
-        let doorHelper = sprites.create(assets.image`doorOpenEast`, SpriteKind.Init)
+        console.log("Finding direction")
+        let doorHelper = sprites.create(assets.tile`doorOpenEast`, SpriteKind.Init)
         doorHelper.setPosition(this.x * 16, this.y * 16)
         // Get the direction of this door
         if(touchingTileOfTypes(doorHelper, this.UNLOCKED_TILES) != -1)
             this.myDirection = touchingTileOfTypes(doorHelper, this.UNLOCKED_TILES)
         else if(touchingTileOfTypes(doorHelper, this.LOCKED_TILES) != -1)
             this.myDirection = touchingTileOfTypes(doorHelper, this.LOCKED_TILES)
-        
+        console.log("Found direction: " + this.myDirection)
         doorHelper.destroy()
         this.updateDoorTile()
     }
     updateDoorTile()
     {
         if(this.isLocked)
+        {
             tiles.setTileAt(tiles.getTileLocation(this.x, this.y), this.LOCKED_TILES[this.myDirection])
+            tiles.setWallAt(tiles.getTileLocation(this.x, this.y), true)
+        }
         else
+        {
             tiles.setTileAt(tiles.getTileLocation(this.x, this.y), this.UNLOCKED_TILES[this.myDirection])
+            tiles.setWallAt(tiles.getTileLocation(this.x, this.y), false)
+        }
     }
 }
 class MapData
@@ -246,7 +256,7 @@ class MapData
      */
     spawnX: number
     spawnY: number
-    doors: number[]
+    doors: DoorData[]
     shadowScale: number
     tilemap: tiles.TileMapData
     keyLocations: number[][]
@@ -261,7 +271,7 @@ class MapData
      */
     setup: boolean
     
-    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: number[], usesShadow: number, keys: number[][])
+    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: DoorData[], usesShadow: number, keys: number[][])
     {
         this.spawnX = spawnX
         this.spawnY = spawnY
@@ -316,6 +326,9 @@ class MapData
     setActiveMap()
     {
         scene.setTileMapLevel(this.tilemap)
+        this.doors.forEach(function (door: DoorData, index: number) {
+            door.findDoorDirection()
+        })
         if(!this.setup)
         {
             // Generate Keys
@@ -364,17 +377,24 @@ class MapData
         else
             console.log("Unable to find SpawnableObject from handleItemCollision")
     }
-    tryUseDoor(door: number)
+    tryUseDoor(door: number[])
     {
-        changeMap(MAP_DATAS[currentMap].doors[door])
+        this.doors.forEach(function (data: DoorData, index: number)
+        {
+            if(data.x == door[0] && data.y == door[1])
+            {
+                data.useDoor()
+            }
+        })
+        //changeMap(MAP_DATAS[currentMap].doors[door])
     }
 }
 /**
  * Constants
  */
-let MAP_DATAS = [new MapData(129.5, 123.5, assets.tilemap`CrossRoadsLarge`, [1, 2, 0, 0], 0, [[]]),
-    new MapData(129.5, 123.5, assets.tilemap`intersection`, [0, 0, 0, 0], 0, [[]]),
-    new MapData(39, 119, assets.tilemap`mazeR`, [1, 0, 0, 0], 8.75, [[230, 24, 0]])
+let MAP_DATAS = [new MapData(129.5, 123.5, assets.tilemap`CrossRoadsLarge`, [new DoorData(31.5, 15.5, [2, 39, 119], false), new DoorData(31.5, 16.5, [2, 39, 119], false)], 0, [[]]),
+    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [[]]),
+    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5,7.5,[0,-1,-1], false)], 8.75, [[230, 24, 0]])
 ]
 
 let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
@@ -385,7 +405,7 @@ scene.setBackgroundColor(0)
 let player = new PlayerSprite(assets.image`heroWalkFront1`, 100, 100)
 player.sprite.setPosition(129.5,123.5)
 tiles.setTileAt(tiles.getTileLocation(0, 16), assets.tile`doorOpenWest`)
-
+changeMap(0)
 controller.player1.onButtonEvent(ControllerButton.A, ControllerButtonEvent.Pressed, function() {
 })
 
