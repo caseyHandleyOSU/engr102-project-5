@@ -116,10 +116,12 @@ class SpawnableObject
     SPRITE_KIND: number = SpriteKind.Spawnable
     img: Image
     sprite: Sprite = null
+    myType: String
 
-    constructor(x: number, y: number, img: Image) {
+    constructor(x: number, y: number, img: Image, myType: String) {
         this.setPos(x,y)
         this.img = img
+        this.myType = myType
     }
 
     setPos(x: number, y: number)
@@ -139,9 +141,10 @@ class SpawnableObject
             this.sprite.destroy()
         }
     }
-    handleCollision(player: PlayerSprite)
+    handleCollision(player: PlayerSprite): number[]
     {
         // ABSTRACT :: Implement on children!
+        return undefined
     }
 }
 class PowerUp extends SpawnableObject
@@ -150,20 +153,21 @@ class PowerUp extends SpawnableObject
     pType: number
     constructor(x:number, y: number, pType: number)
     {
-        super(x,y,assets.image`TODO`)
+        super(x,y,assets.image`TODO`,"pUp")
         this.pType = pType
     }
-    handleCollision(player: PlayerSprite)
+    handleCollision(player: PlayerSprite): number[]
     {
         player.applyPowerUp(this.pType)
+        return null
     }
 }
 class Key extends SpawnableObject
 {
-    doorID: number
+    doorID: number[]
 
-    constructor(x: number, y: number, doorID: number) {
-        super(x, y, assets.image`keyImage`)
+    constructor(x: number, y: number, doorID: number[]) {
+        super(x, y, assets.image`keyImage`, "Key")
         this.x = x
         this.y = y
         this.doorID = doorID
@@ -171,10 +175,11 @@ class Key extends SpawnableObject
         this.createSprite()
     }
 
-    handleCollision(player: PlayerSprite)
+    handleCollision(player: PlayerSprite): number[]
     {
         this.destroySprite()
         player.sprite.sayText("I found a key!", 5000.0)
+        return this.doorID
     }
 }
 class DoorData
@@ -192,11 +197,11 @@ class DoorData
     myDirection: number
     isLocked: boolean
 
-    constructor(x: number, y: number, destination: number[], locked: boolean)
+    constructor(x: number, y: number, destination: number[], locked: boolean, id: number)
     {
         this.x = x
         this.y = y
-        //this.id = id
+        this.id = id
         this.destination = destination
         this.isLocked = locked
     }
@@ -240,6 +245,11 @@ class DoorData
             tiles.setWallAt(tiles.getTileLocation(this.x, this.y), false)
         }
     }
+    unlockDoor()
+    {
+        this.isLocked = false
+        this.updateDoorTile()
+    }
 }
 class MapData
 {
@@ -259,26 +269,27 @@ class MapData
     doors: DoorData[]
     shadowScale: number
     tilemap: tiles.TileMapData
-    keyLocations: number[][]
+    keyLocations: Key[]
 
     /**
      * Runtime Values
      */
     usedObjects: SpawnableObject[] = []
+    openDoors: number[] = []
 
     /** 
      * Setup
      */
     setup: boolean
     
-    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: DoorData[], usesShadow: number, keys: number[][])
+    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: DoorData[], usesShadow: number, keys: Key[])
     {
         this.spawnX = spawnX
         this.spawnY = spawnY
         this.tilemap = tilemap
         this.doors = doors
         this.shadowScale = usesShadow
-        this.keyLocations = keys
+        this.keys = keys
     }
     addEnemy(enemy: Enemy)
     {
@@ -331,13 +342,13 @@ class MapData
         })
         if(!this.setup)
         {
-            // Generate Keys
+            /** Generate Keys
             for (let i = 0; i < this.keyLocations.length; i++) {
                 console.log(i + " " + this.keyLocations[i][0] + " " + this.keyLocations[i][1] + " " + this.keyLocations[i][2])
                 let keyBuilder = new Key(this.keyLocations[i][0], this.keyLocations[i][1], this.keyLocations[i][2])
                 keyBuilder.createSprite()
                 this.keys.push(keyBuilder)
-            }
+            }*/
 
             this.setup = true
         }
@@ -371,9 +382,15 @@ class MapData
         let spawnable: SpawnableObject = this.findSpawnableFromSprite(item)
         if (spawnable != null)
         {
-            spawnable.handleCollision(player)
+            if(spawnable.myType.toUpperCase() == "KEY")
+            {
+                console.log("KEY HIT")
+                let keyData = spawnable.handleCollision(player)
+                MAP_DATAS[keyData[1]].unlockDoor(keyData[0])
+            }
+
             this.usedObjects.push(spawnable)
-        }      
+        }
         else
             console.log("Unable to find SpawnableObject from handleItemCollision")
     }
@@ -388,13 +405,24 @@ class MapData
         })
         //changeMap(MAP_DATAS[currentMap].doors[door])
     }
+    unlockDoor(doorID: number)
+    {
+        console.log("Opening doorID " + doorID + " (" + this.tilemap + ")")
+        this.openDoors.push(doorID)
+        this.doors.forEach(function (door: DoorData, index: number) {
+            if (door.id == doorID)
+            {
+                door.unlockDoor()
+            }
+        })
+    }
 }
 /**
  * Constants
  */
-let MAP_DATAS = [new MapData(129.5, 123.5, assets.tilemap`CrossRoadsLarge`, [new DoorData(31.5, 15.5, [2, 39, 119], false), new DoorData(31.5, 16.5, [2, 39, 119], false)], 0, [[]]),
-    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [[]]),
-    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5,7.5,[0,-1,-1], false)], 8.75, [[230, 24, 0]])
+let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true,3), new DoorData(0.5, 15.5, [], true,3)], 0, []),
+    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, []),
+    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5,7.5,[0,490,248], false, 4)], 8.75, [new Key(230, 24, [0, 0])])
 ]
 
 let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
