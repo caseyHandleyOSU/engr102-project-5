@@ -6,7 +6,7 @@ namespace SpriteKind {
     export const Init = SpriteKind.create()
 }
 const PowerUpKinds = {
-    Heart: 0
+    Health: 0
 }
 class SpriteWithHealth
 {
@@ -62,11 +62,14 @@ class SpriteWithHealth
 }
 class PlayerSprite extends SpriteWithHealth
 {
+    cashedHP: number = 0
+
     constructor(img: Image, maxHealth: number, currentHealth: number)
     {
         super(img, SpriteKind.Player, maxHealth, currentHealth)
         controller.moveSprite(this.sprite, 70, 70)
         scene.cameraFollowSprite(this.sprite)
+        this.sprite.z = 5
     }
     checkCollisions()
     {
@@ -84,9 +87,29 @@ class PlayerSprite extends SpriteWithHealth
             MAP_DATAS[currentMap].tryUseDoor([this.sprite.tilemapLocation().x / 16, this.sprite.tilemapLocation().y/16])
         }
     }
+    casheHealth(amount: number)
+    {
+        this.cashedHP += amount
+        if(this.cashedHP >= this.maxHealth)
+        {
+            this.cashedHP -= this.maxHealth
+            info.changeLifeBy(1)
+        }
+    }
     applyPowerUp(kind: number)
     {
-        // TODO :: Implement Power Ups
+        switch(kind)
+        {
+            case 0:
+                if(this.getHealth() >= 100)
+                    this.casheHealth(HEART_AMOUNT)
+                else
+                    this.changeHealth(HEART_AMOUNT)
+                break
+            default:
+                break
+        }
+
     }
     changeHealth(amount: number) {
         let newHP = super.changeHealth(amount)
@@ -174,17 +197,27 @@ class SpawnableObject
 }
 class PowerUp extends SpawnableObject
 {
-    powerUpKinds = [assets.image``]
+    
     pType: number
-    constructor(x:number, y: number, pType: number)
+    constructor(pType: number, score: number)
     {
-        super(x,y,assets.image`TODO`,"pUp", 0)
+        super(0,0,POWER_UP_KINDS[pType],"pUp", score)
         this.pType = pType
     }
     handleCollision(player: PlayerSprite): number[]
     {
+        super.handleCollision(player)
         player.applyPowerUp(this.pType)
+        this.sprite.destroy()
         return null
+    }
+    spawn()
+    {
+        this.createSprite()
+        tiles.placeOnRandomTile(this.sprite, assets.tile`floorLight2`)
+        this.x = this.sprite.x
+        this.y = this.sprite.y
+        console.log('spawned sprite @ ' + this.sprite.x + ',' + this.sprite.y)
     }
 }
 class Key extends SpawnableObject
@@ -417,7 +450,7 @@ class MapData
      * Map Sprite Control
      */
     spawners: EnemySpawner[] = []
-    powerUps: PowerUp[] = []
+    powerUps: SpawnableObject[] = []
     shadow: Sprite
     keys: SpawnableObject[] = []
 
@@ -436,13 +469,15 @@ class MapData
      */
     usedObjects: SpawnableObject[] = []
     openDoors: number[] = []
+    numConsumedPowerUps: number[]
 
     /** 
      * Setup
      */
     setup: boolean
+    numPowerUps: number[]
     
-    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: DoorData[], usesShadow: number, keys: Key[], spawners: EnemySpawner[])
+    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: DoorData[], usesShadow: number, keys: Key[], spawners: EnemySpawner[], numPowerUps: number[])
     {
         this.spawnX = spawnX
         this.spawnY = spawnY
@@ -452,25 +487,7 @@ class MapData
         this.keys = keys
         this.spawners = spawners
         this.mapChanged()
-    }
-    addEnemy(enemy: Enemy)
-    {
-        //this.enemies.push(enemy)
-    }
-    removeEnemyIndex(index: number)
-    {
-        //this.enemies.removeAt(index)
-    }
-    removeEnemy(enemy: Enemy)
-    {
-        /*for(let i = 0; i < this.enemies.length; i++)
-        {
-            if(this.enemies[i] = enemy)
-            {
-                this.removeEnemyIndex(i)
-                break
-            }
-        }*/
+        this.numPowerUps = numPowerUps
     }
     draw()
     {
@@ -479,7 +496,7 @@ class MapData
             if(this.shadow == null)
                 this.shadow = sprites.create(assets.image`shadow`, SpriteKind.Map)
             this.shadow.setPosition(player.sprite.x, player.sprite.y)
-            this.shadow.z = -1
+            this.shadow.z = 1
             this.shadow.setScale(this.shadowScale)
         }
     }
@@ -499,6 +516,9 @@ class MapData
             spawner.stopSpawning()
             spawner.clear()
         })
+        this.powerUps.forEach(function(pUp: PowerUp) {
+            pUp.destroySprite()
+        })
     }
     setActiveMap()
     {
@@ -512,17 +532,36 @@ class MapData
                 spawner.startSpawning()
             })
             this.setup = true
+            
+            for(let i = 0; i < this.numPowerUps.length; i++)
+            {
+                console.log('Creating Power Ups!')
+                for(let _ = 0; _ < this.numPowerUps[i]; _++)
+                {
+                    console.log('   New Powerup Created!')
+                    let pUp = new PowerUp(i, 0)
+                    pUp.spawn()
+                    this.powerUps.push(pUp)
+                }
+                    
+            }
         }
         else // Returning to board
         {
-            
-            
+            this.powerUps.forEach(function (pUp: PowerUp) {
+                if (this.usedObjects.indexOf(pUp) == -1)
+                    pUp.createSprite()
+            })
         }
         // Regenerate keys
         for (let i = 0; i < this.keys.length; i++) {
             if (this.usedObjects.indexOf(this.keys[i]) == -1) // Prevent key from regenerating if it's been claimed already
                 this.keys[i].createSprite()
         }
+    }
+    isSpawnableLocation(x: number, y: number)
+    {
+
     }
     findSpawnableFromSprite(sprite: Sprite): SpawnableObject
     {
@@ -534,6 +573,12 @@ class MapData
                 return key
         }
         // TODO: Search powerups
+        for(let i = 0; i < this.powerUps.length; i++)
+        {
+            let pUp = this.powerUps[i]
+            if(pUp.sprite == sprite)
+                return pUp
+        }
 
         // Return null if it doesn't match anything
         return null
@@ -551,6 +596,11 @@ class MapData
                 console.log("KEY HIT")
                 let keyData = spawnable.handleCollision(player)
                 MAP_DATAS[keyData[1]].unlockDoor(keyData[0])
+            }
+            else if(spawnable.myType.toUpperCase() == 'PUP')
+            {
+                console.log("POWER UP")
+                spawnable.handleCollision(player)
             }
 
             this.usedObjects.push(spawnable)
@@ -623,12 +673,14 @@ class Backup{
 /**
  * Constants
  */
-let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true, 3), new DoorData(0.5, 15.5, [], true, 3)], 0, [], [new FollowerSpawner([[0, 0], [50, 50]], [50, 60])]),
-    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [], []),
-    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4)], 8.75, [new Key(230, 24, [0, 0])], [])
+let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true, 3), new DoorData(0.5, 15.5, [], true, 3)], 0, [], [new FollowerSpawner([[0, 0], [50, 50]], [50, 60])],[15]),
+    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [], [],[]),
+    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4)], 8.75, [new Key(230, 24, [0, 0])], [],[])
 ]
-
+let POWER_UP_KINDS = [assets.image`heartPowerUp`]
 let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
+let HEART_AMOUNT = 20
+
 
 let backup: Backup
 let currentMap = 0
@@ -665,7 +717,7 @@ function touchingTileOfTypes(sprite: Sprite, types: Image[]) {
 
 function playerDied()
 {
-    if(info.life() >= 0)
+    /*if(info.life() >= 0)
     {
         game.splash("You Died!", "Press A to respawn!")
         changeMap(0)
@@ -674,7 +726,7 @@ function playerDied()
     }
     else{
         game.gameOver(false)
-    }
+    }*/
 }
 
 // Game loop. Needed to draw health bars
