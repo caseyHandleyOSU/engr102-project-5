@@ -6,7 +6,9 @@ namespace SpriteKind {
     export const Init = SpriteKind.create()
 }
 const PowerUpKinds = {
-    Health: 0
+    Health: 0,
+    SmallScore: 1,
+    MediumScore: 2
 }
 class SpriteWithHealth
 {
@@ -336,9 +338,13 @@ class EnemySpawner
     }
     startSpawning()
     {
-        this.spawningEnabled = true
+        this.enableSpawning()
         this.trySpawn(true)
         this.loopSpawn()
+    }
+    enableSpawning()
+    {
+        this.spawningEnabled = true
     }
     /**
      * External call for spawning
@@ -410,6 +416,11 @@ class EnemySpawner
         // ABSTRACT
         return false
     }
+    destroyEnemy(enemy: Enemy)
+    {
+        enemy.sprite.destroy()
+        this.spawnedEnemies.removeAt(this.spawnedEnemies.indexOf(enemy))
+    }
 }
 class FollowerSpawner extends EnemySpawner
 {
@@ -434,9 +445,9 @@ class FollowerSpawner extends EnemySpawner
         if (enemies[0] != undefined && enemies[1] != undefined)
         {
             if (enemies[0].destroyOnCollide)
-                enemies[0].sprite.destroy()
+                this.destroyEnemy(enemies[0])
             if (enemies[1].destroyOnCollide)
-                enemies[1].sprite.destroy()
+                this.destroyEnemy(enemies[1])
 
             retVal = true
         }
@@ -528,7 +539,7 @@ class MapData
         })
         if(!this.setup)
         {
-            this.spawners.forEach(function(spawner: EnemySpawner){
+            this.spawners.forEach(function (spawner: EnemySpawner) {
                 spawner.startSpawning()
             })
             this.setup = true
@@ -539,7 +550,7 @@ class MapData
                 for(let _ = 0; _ < this.numPowerUps[i]; _++)
                 {
                     console.log('   New Powerup Created!')
-                    let pUp = new PowerUp(i, 0)
+                    let pUp = new PowerUp(i, POWER_UP_SCORES[i])
                     pUp.spawn()
                     this.powerUps.push(pUp)
                 }
@@ -548,20 +559,22 @@ class MapData
         }
         else // Returning to board
         {
-            this.powerUps.forEach(function (pUp: PowerUp) {
-                if (this.usedObjects.indexOf(pUp) == -1)
-                    pUp.createSprite()
+            // Regenerate PowerUps
+            for (let i = 0; i < this.powerUps.length; i++) {
+                if (this.usedObjects.indexOf(this.powerUps[i]) == -1) // Prevent key from regenerating if it's been claimed already
+                    this.powerUps[i].createSprite()
+            }
+            // Restart Spawners
+            this.spawners.forEach(function (spawner: EnemySpawner) {
+                spawner.enableSpawning()
             })
         }
+        
         // Regenerate keys
         for (let i = 0; i < this.keys.length; i++) {
             if (this.usedObjects.indexOf(this.keys[i]) == -1) // Prevent key from regenerating if it's been claimed already
                 this.keys[i].createSprite()
         }
-    }
-    isSpawnableLocation(x: number, y: number)
-    {
-
     }
     findSpawnableFromSprite(sprite: Sprite): SpawnableObject
     {
@@ -621,7 +634,7 @@ class MapData
             if (e != undefined)
             {
                 player.dealDamage(e.damage)
-                enemy.destroy()
+                this.spawners[i].destroyEnemy(e)
                 break
             }
         }
@@ -673,11 +686,12 @@ class Backup{
 /**
  * Constants
  */
-let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true, 3), new DoorData(0.5, 15.5, [], true, 3)], 0, [], [new FollowerSpawner([[0, 0], [50, 50]], [50, 60])],[15]),
-    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [], [],[]),
-    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4)], 8.75, [new Key(230, 24, [0, 0])], [],[])
+let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true, 3), new DoorData(0.5, 15.5, [], true, 3)], 0, [], [new FollowerSpawner([[0, 0], [50, 50]], [50, 60])],[3]),
+    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [], [],[4]),
+    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4)], 8.75, [new Key(230, 24, [0, 0])], [],[1,3,1])
 ]
-let POWER_UP_KINDS = [assets.image`heartPowerUp`]
+let POWER_UP_KINDS = [assets.image`heartPowerUp`, assets.image`coin3`, assets.image`coin0`]
+let POWER_UP_SCORES = [0, 1, 3]
 let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
 let HEART_AMOUNT = 20
 

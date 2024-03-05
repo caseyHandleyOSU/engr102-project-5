@@ -24,6 +24,36 @@
         "mimeType": "image/x-mkcd-f4",
         "displayName": "heartPowerUp"
     },
+    "image6": {
+        "data": "hwQIAAgAAAAAAAAAALvMALBVVQ9bPRP9WxHR/bBV3Q8Au8wAAAAAAA==",
+        "mimeType": "image/x-mkcd-f4",
+        "displayName": "coin2"
+    },
+    "image7": {
+        "data": "hwQIAAgAAAAAu8wAsFXVD1s90/1bUxX9W1MV/Vsd0f2wVd0PALvMAA==",
+        "mimeType": "image/x-mkcd-f4",
+        "displayName": "coin0"
+    },
+    "image8": {
+        "data": "hwQIAAgAAAAAu8wAsFVVD1s90/1bUxX9Wx3R/bBV3Q8Au8wAAAAAAA==",
+        "mimeType": "image/x-mkcd-f4",
+        "displayName": "coin1"
+    },
+    "image9": {
+        "data": "hwQIAAgAAAAAAAAAAAAAALC7ywxbUd3zW1Hd87C7ywwAAAAAAAAAAA==",
+        "mimeType": "image/x-mkcd-f4",
+        "displayName": "coin3"
+    },
+    "image10": {
+        "data": "hwQIAAgAAAAAAAAAALvMALBV3Q9bEdH9Wz0T/bBVVQ8Au8wAAAAAAA==",
+        "mimeType": "image/x-mkcd-f4",
+        "displayName": "coin4"
+    },
+    "image11": {
+        "data": "hwQIAAgAAAAAAAAAALvMALBV3Q9bHdH9W1MV/Vs90/2wVVUPALvMAA==",
+        "mimeType": "image/x-mkcd-f4",
+        "displayName": "coin5"
+    },
     "*": {
         "mimeType": "image/x-mkcd-f4",
         "dataEncoding": "base64",
