@@ -38,6 +38,17 @@ class SpriteWithHealth
         this.currentHealth = Math.clamp(0, this.maxHealth, this.currentHealth + amount)
         return this.getHealth()
     }
+    resetHealth()
+    {
+        this.currentHealth = this.maxHealth
+    }
+    /***
+     * Deals damage
+     */
+    dealDamage(amount: number)
+    {
+        this.changeHealth(-1 * amount)
+    }
     /**
      * Handles collisions with Tiles, such as in the case of lava or doors
      */
@@ -77,13 +88,23 @@ class PlayerSprite extends SpriteWithHealth
     {
         // TODO :: Implement Power Ups
     }
+    changeHealth(amount: number) {
+        let newHP = super.changeHealth(amount)
+        if (newHP <= 0)
+        {
+            playerDied()
+        }
+        return newHP
+    }
 }
 class Enemy extends SpriteWithHealth
 {
+    damage: number
     destroyOnCollide: boolean = false
-    constructor(img: Image, maxHealth: number, currentHealth: number, destroyOnCollide: boolean) {
+    constructor(img: Image, maxHealth: number, currentHealth: number, destroyOnCollide: boolean, damage: number) {
         super(img, SpriteKind.Enemy, maxHealth, currentHealth)
         this.destroyOnCollide = destroyOnCollide
+        this.damage = damage
     }
 }
 class HealthBar
@@ -94,6 +115,7 @@ class HealthBar
     constructor(maxHealth: number, currentHealth: number)
     {
         this.healthBar = sprites.create(image.create(20, 4), SpriteKind.HealthBar)
+        this.healthBar.setFlag(SpriteFlag.GhostThroughWalls, true)
         this.max = maxHealth
         this.current = currentHealth
     }
@@ -119,13 +141,14 @@ class SpawnableObject
     img: Image
     sprite: Sprite = null
     myType: String
+    scoreIncrement: number
 
-    constructor(x: number, y: number, img: Image, myType: String) {
+    constructor(x: number, y: number, img: Image, myType: String, scoreIncrement: number) {
         this.setPos(x,y)
         this.img = img
         this.myType = myType
+        this.scoreIncrement = scoreIncrement
     }
-
     setPos(x: number, y: number)
     {
         this.x = x
@@ -145,7 +168,7 @@ class SpawnableObject
     }
     handleCollision(player: PlayerSprite): number[]
     {
-        // ABSTRACT :: Implement on children!
+        info.setScore(info.score() + this.scoreIncrement)
         return undefined
     }
 }
@@ -155,7 +178,7 @@ class PowerUp extends SpawnableObject
     pType: number
     constructor(x:number, y: number, pType: number)
     {
-        super(x,y,assets.image`TODO`,"pUp")
+        super(x,y,assets.image`TODO`,"pUp", 0)
         this.pType = pType
     }
     handleCollision(player: PlayerSprite): number[]
@@ -169,7 +192,7 @@ class Key extends SpawnableObject
     doorID: number[]
 
     constructor(x: number, y: number, doorID: number[]) {
-        super(x, y, assets.image`keyImage`, "Key")
+        super(x, y, assets.image`keyImage`, "Key", 2)
         this.x = x
         this.y = y
         this.doorID = doorID
@@ -179,6 +202,7 @@ class Key extends SpawnableObject
 
     handleCollision(player: PlayerSprite): number[]
     {
+        super.handleCollision(player)
         this.destroySprite()
         player.sprite.sayText("I found a key!", 5000.0)
         return this.doorID
@@ -303,7 +327,7 @@ class EnemySpawner
         {
             if (firstSpawn || this.lastSpawnTime + this.spawnDelay <= game.runtime())
             {
-                let newEnemy = new Enemy(this.img, this.maxHP, this.startingHP, this.destroyOnCollision)
+                let newEnemy = new Enemy(this.img, this.maxHP, this.startingHP, this.destroyOnCollision, 5.0)
                 this.applyAI(newEnemy)
                 let location = this.spawnLocations[Math.floor(Math.random() * this.spawnLocations.length)]
                 newEnemy.sprite.setPosition(location[0], location[1])
@@ -333,48 +357,58 @@ class EnemySpawner
     {
         // ABSTRACT: Implemented in subclasses
     }
+    findEnemyFromSprite(e: Sprite): Enemy
+    {
+        let myEnemy: Enemy = undefined
+        for(let i = 0; i < this.spawnedEnemies.length; i++)
+        {
+            let enemy = this.spawnedEnemies[i]
+            if (enemy.sprite == e)
+                return enemy
+        }
+        return undefined
+    }
     findEnemiesFromSprites(e1: Sprite, e2: Sprite): Enemy[]
     {
-        let enemy1: Enemy = undefined
-        let enemy2: Enemy = undefined
-        this.spawnedEnemies.forEach(function (enemy: Enemy) {
-            if (enemy.sprite == e1)
-                enemy1 = enemy
-            else if (enemy.sprite == e2)
-                enemy2 = enemy
-        })
-
-        return [enemy1, enemy2]
+        return [this.findEnemyFromSprite(e1), this.findEnemyFromSprite(e2)]
     }
-    notifyCollide(e1: Sprite, e2: Sprite)
+    notifyCollide(e1: Sprite, e2: Sprite): boolean
     {
         // ABSTRACT
+        return false
     }
 }
 class FollowerSpawner extends EnemySpawner
 {
-    constructor(locations: number[][])
+    speeds: number[]
+    constructor(locations: number[][], speeds: number[])
     {
         super(assets.image`skellyFront`, 1, 1, 1000, locations, true)
+        this.speeds = speeds
     }
     applyAI(enemy: Enemy)
     {
-        enemy.sprite.follow(player.sprite, 50, 300)
+        enemy.sprite.follow(player.sprite, this.speeds[Math.floor(Math.random() * this.speeds.length)], 300)
     }
     handleAI()
     {
 
     }
-    notifyCollide(e1: Sprite, e2: Sprite)
+    notifyCollide(e1: Sprite, e2: Sprite): boolean
     {
+        let retVal = false
         let enemies = this.findEnemiesFromSprites(e1, e2)
-        if (enemies[0] != undefined)
-            if(enemies[0].destroyOnCollide)
+        if (enemies[0] != undefined && enemies[1] != undefined)
+        {
+            if (enemies[0].destroyOnCollide)
                 enemies[0].sprite.destroy()
-    
-        if (enemies[1] != undefined)
-            if(enemies[1].destroyOnCollide)
+            if (enemies[1].destroyOnCollide)
                 enemies[1].sprite.destroy()
+
+            retVal = true
+        }
+            
+        return retVal
     }
 }
 class MapData
@@ -496,7 +530,7 @@ class MapData
         for(let i = 0; i < this.keys.length; i++)
         {
             let key = this.keys[i]
-            if(key.x == sprite.x && key.y == sprite.y)
+            if (key.sprite == sprite)
                 return key
         }
         // TODO: Search powerups
@@ -507,9 +541,11 @@ class MapData
 
     handleItemCollision(item: Sprite, player: PlayerSprite)
     {
+        // ODO: Fix key bugs
         let spawnable: SpawnableObject = this.findSpawnableFromSprite(item)
         if (spawnable != null)
         {
+            console.log(spawnable.myType)
             if(spawnable.myType.toUpperCase() == "KEY")
             {
                 console.log("KEY HIT")
@@ -524,9 +560,21 @@ class MapData
     }
     handleEnemyCollision(enemy1: Sprite, enemy2: Sprite)
     {
-        this.spawners.forEach(function (spawner: EnemySpawner) {
-            spawner.notifyCollide(enemy1, enemy2)
-        })
+        for(let i = 0; i < this.spawners.length; i++)
+        {
+            this.spawners[i].notifyCollide(enemy1, enemy2)
+        }
+    }
+    handlePlrEnemyCollision(enemy: Sprite) {
+        for (let i = 0; i < this.spawners.length; i++) {
+            let e = this.spawners[i].findEnemyFromSprite(enemy)
+            if (e != undefined)
+            {
+                player.dealDamage(e.damage)
+                enemy.destroy()
+                break
+            }
+        }
     }
     tryUseDoor(door: number[])
     {
@@ -551,16 +599,38 @@ class MapData
         })
     }
 }
+class Backup{
+    mapDatas: MapData[]
+    currentMap: number
+    lives: number
+    score: number
+
+    constructor()
+    {
+        this.mapDatas = MAP_DATAS
+        this.currentMap = currentMap
+        this.lives = info.life()
+        this.score = info.score()
+    }
+    recover()
+    {
+        MAP_DATAS = this.mapDatas
+        currentMap = this.currentMap
+        info.setLife(this.lives)
+        info.setScore(this.score)
+    }
+}
 /**
  * Constants
  */
-let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true,3), new DoorData(0.5, 15.5, [], true,3)], 0, [], [new FollowerSpawner([[0,0],[50,50]])]),
+let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true, 3), new DoorData(0.5, 15.5, [], true, 3)], 0, [], [new FollowerSpawner([[0, 0], [50, 50]], [50, 60])]),
     new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [], []),
     new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4)], 8.75, [new Key(230, 24, [0, 0])], [])
 ]
 
 let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
 
+let backup: Backup
 let currentMap = 0
 scene.setTileMapLevel(assets.tilemap`CrossRoadsLarge`)
 scene.setBackgroundColor(0)
@@ -570,6 +640,8 @@ tiles.setTileAt(tiles.getTileLocation(0, 16), assets.tile`doorOpenWest`)
 changeMap(0)
 controller.player1.onButtonEvent(ControllerButton.A, ControllerButtonEvent.Pressed, function() {
 })
+info.setScore(0)
+info.setLife(3)
 
 
 function changeMap(toMap: number)
@@ -579,7 +651,7 @@ function changeMap(toMap: number)
     MAP_DATAS[currentMap].setActiveMap()
     scene.setTileMapLevel(MAP_DATAS[currentMap].tilemap)
     player.sprite.setPosition(MAP_DATAS[currentMap].spawnX, MAP_DATAS[currentMap].spawnY)
-    // TODO: Hide/Show PowerUps and Enemies on map change
+    backup = new Backup()
 }
 
 function touchingTileOfTypes(sprite: Sprite, types: Image[]) {
@@ -591,6 +663,20 @@ function touchingTileOfTypes(sprite: Sprite, types: Image[]) {
     return -1
 }
 
+function playerDied()
+{
+    if(info.life() >= 0)
+    {
+        game.splash("You Died!", "Press A to respawn!")
+        changeMap(0)
+        player.resetHealth()
+        info.changeLifeBy(-1)
+    }
+    else{
+        game.gameOver(false)
+    }
+}
+
 // Game loop. Needed to draw health bars
 game.onUpdate(function () {
     MAP_DATAS[currentMap].draw()
@@ -600,9 +686,20 @@ game.onUpdate(function () {
     //console.log(player.sprite.x + " " + player.sprite.y)
 })
 
+info.onLifeZero(function(){
+    game.splash("You ran out of lives!","Press A to recover a backup!")
+    if(backup != null && backup != undefined)
+        backup.recover()
+    else
+        game.gameOver(false)
+})
+
 sprites.onOverlap(SpriteKind.Spawnable, SpriteKind.Player, function(spawnable: Sprite, plr: Sprite) {
     MAP_DATAS[currentMap].handleItemCollision(spawnable, player)
 })
 sprites.onOverlap(SpriteKind.Enemy, SpriteKind.Enemy, function (enemy1: Sprite, enemy2: Sprite) {
     MAP_DATAS[currentMap].handleEnemyCollision(enemy1, enemy2)
+})
+sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (player: Sprite, enemy: Sprite) {
+    MAP_DATAS[currentMap].handlePlrEnemyCollision(enemy)
 })
