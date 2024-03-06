@@ -122,16 +122,6 @@ class PlayerSprite extends SpriteWithHealth
         return newHP
     }
 }
-class Enemy extends SpriteWithHealth
-{
-    damage: number
-    destroyOnCollide: boolean = false
-    constructor(img: Image, maxHealth: number, currentHealth: number, destroyOnCollide: boolean, damage: number) {
-        super(img, SpriteKind.Enemy, maxHealth, currentHealth)
-        this.destroyOnCollide = destroyOnCollide
-        this.damage = damage
-    }
-}
 class HealthBar
 {
     max: number
@@ -318,7 +308,7 @@ class EnemySpawner
      * 
      */
     spawnLocations: number[][]
-    spawnedEnemies: Enemy[] = []
+    spawnedEnemies: Sprite[] = []
     img: Image
     maxHP: number
     startingHP: number
@@ -326,8 +316,9 @@ class EnemySpawner
     spawnDelay: number
     lastSpawnTime: number = 0
     destroyOnCollision: boolean
+    maxEnemies: number
 
-    constructor(img: Image, maxHP: number, startingHP: number, spawnDelay: number, locations: number[][], destroyOnCollision: boolean)
+    constructor(img: Image, maxHP: number, startingHP: number, spawnDelay: number, locations: number[][], destroyOnCollision: boolean, max: number)
     {
         this.img = img
         this.maxHP = maxHP
@@ -335,6 +326,7 @@ class EnemySpawner
         this.spawnDelay = spawnDelay
         this.spawnLocations = locations
         this.destroyOnCollision = destroyOnCollision
+        this.maxEnemies = max
     }
     startSpawning()
     {
@@ -366,14 +358,17 @@ class EnemySpawner
         {
             if (firstSpawn || this.lastSpawnTime + this.spawnDelay <= game.runtime())
             {
-                let newEnemy = new Enemy(this.img, this.maxHP, this.startingHP, this.destroyOnCollision, 5.0)
-                this.applyAI(newEnemy)
-                let location = this.spawnLocations[Math.floor(Math.random() * this.spawnLocations.length)]
-                newEnemy.sprite.setPosition(location[0], location[1])
-                newEnemy.sprite.setStayInScreen(false)
-                this.spawnedEnemies.push(newEnemy)
+                if(this.spawnedEnemies.length < this.maxEnemies)
+                {
+                    let newEnemy = sprites.create(this.img, SpriteKind.Enemy)
+                    //new Enemy(this.img, this.maxHP, this.startingHP, this.destroyOnCollision, 5.0)
+                    this.applyAI(newEnemy)
+                    let location = this.spawnLocations[Math.floor(Math.random() * this.spawnLocations.length)]
+                    newEnemy.setPosition(location[0], location[1])
+                    newEnemy.setStayInScreen(false)
+                    this.spawnedEnemies.push(newEnemy)
+                }  
             }
-            //this.callSpawn()
         }
     }
     stopSpawning()
@@ -382,12 +377,9 @@ class EnemySpawner
     }
     clear()
     {
-        for(let i = this.spawnedEnemies.length-1; i >= 0; i--)
-        {
-            this.spawnedEnemies.pop().sprite.destroy()
-        }
+        sprites.destroyAllSpritesOfKind(SpriteKind.Enemy)
     }
-    applyAI(enemy: Enemy)
+    applyAI(enemy: Sprite)
     {
 
     }
@@ -396,29 +388,15 @@ class EnemySpawner
     {
         // ABSTRACT: Implemented in subclasses
     }
-    findEnemyFromSprite(e: Sprite): Enemy
-    {
-        let myEnemy: Enemy = undefined
-        for(let i = 0; i < this.spawnedEnemies.length; i++)
-        {
-            let enemy = this.spawnedEnemies[i]
-            if (enemy.sprite == e)
-                return enemy
-        }
-        return undefined
-    }
-    findEnemiesFromSprites(e1: Sprite, e2: Sprite): Enemy[]
-    {
-        return [this.findEnemyFromSprite(e1), this.findEnemyFromSprite(e2)]
-    }
     notifyCollide(e1: Sprite, e2: Sprite): boolean
     {
         // ABSTRACT
         return false
     }
-    destroyEnemy(enemy: Enemy)
+    destroyEnemy(enemy: Sprite)
     {
-        enemy.sprite.destroy()
+        console.log('Destroying!')
+        enemy.destroy()
         this.spawnedEnemies.removeAt(this.spawnedEnemies.indexOf(enemy))
     }
 }
@@ -427,32 +405,41 @@ class FollowerSpawner extends EnemySpawner
     speeds: number[]
     constructor(locations: number[][], speeds: number[])
     {
-        super(assets.image`skellyFront`, 1, 1, 1000, locations, true)
+        super(assets.image`skellyFront`, 1, 1, 1000, locations, true, 15)
         this.speeds = speeds
     }
-    applyAI(enemy: Enemy)
+    applyAI(enemy: Sprite)
     {
-        enemy.sprite.follow(player.sprite, this.speeds[Math.floor(Math.random() * this.speeds.length)], 300)
+        enemy.follow(player.sprite, this.speeds[Math.floor(Math.random() * this.speeds.length)], 300)
     }
     handleAI()
     {
 
     }
+    trySpawn(firstSpawn: boolean) {
+        if (this.spawningEnabled) {
+            if (firstSpawn || this.lastSpawnTime + this.spawnDelay <= game.runtime()) {
+                if (this.spawnedEnemies.length <= this.maxEnemies) {
+                    let newEnemy = sprites.create(this.img, SpriteKind.Enemy)
+                    this.applyAI(newEnemy)
+                    let location = this.spawnLocations[Math.floor(Math.random() * this.spawnLocations.length)]
+                    newEnemy.setPosition(location[0], location[1])
+                    newEnemy.setStayInScreen(false)
+                    
+                }
+            }
+        }
+    }
     notifyCollide(e1: Sprite, e2: Sprite): boolean
     {
-        let retVal = false
-        let enemies = this.findEnemiesFromSprites(e1, e2)
-        if (enemies[0] != undefined && enemies[1] != undefined)
-        {
-            if (enemies[0].destroyOnCollide)
-                this.destroyEnemy(enemies[0])
-            if (enemies[1].destroyOnCollide)
-                this.destroyEnemy(enemies[1])
-
-            retVal = true
+        if (this.destroyOnCollision) {
+            if(e1 != null)
+                this.destroyEnemy(e1)
+            if(e2 != null)
+                this.destroyEnemy(e2)
+            return true
         }
-            
-        return retVal
+        return false
     }
 }
 class MapData
@@ -460,7 +447,7 @@ class MapData
     /**
      * Map Sprite Control
      */
-    spawners: EnemySpawner[] = []
+    spawner: EnemySpawner
     powerUps: SpawnableObject[] = []
     shadow: Sprite
     keys: SpawnableObject[] = []
@@ -488,7 +475,7 @@ class MapData
     setup: boolean
     numPowerUps: number[]
     
-    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: DoorData[], usesShadow: number, keys: Key[], spawners: EnemySpawner[], numPowerUps: number[])
+    constructor(spawnX: number, spawnY: number, tilemap: tiles.TileMapData, doors: DoorData[], usesShadow: number, keys: Key[], spawner: EnemySpawner, numPowerUps: number[])
     {
         this.spawnX = spawnX
         this.spawnY = spawnY
@@ -496,19 +483,28 @@ class MapData
         this.doors = doors
         this.shadowScale = usesShadow
         this.keys = keys
-        this.spawners = spawners
         this.mapChanged()
         this.numPowerUps = numPowerUps
+        if(spawner != null)
+            this.spawner = spawner
+        else
+            this.spawner = new EnemySpawner(assets.image``,0,0,0,[[]],false,0)
     }
     draw()
     {
-        if(this.shadowScale > 0)
-        {
-            if(this.shadow == null)
+        
+    }
+    setupShadow()
+    {
+        if (this.shadowScale > 0) {
+            if (this.shadow == null)
+            {
                 this.shadow = sprites.create(assets.image`shadow`, SpriteKind.Map)
-            this.shadow.setPosition(player.sprite.x, player.sprite.y)
-            this.shadow.z = 1
-            this.shadow.setScale(this.shadowScale)
+                this.shadow.z = 1
+                this.shadow.setScale(this.shadowScale)
+                this.shadow.setPosition(this.spawnX, this.spawnY)
+                this.shadow.follow(player.sprite, 100)
+            }
         }
     }
     mapChanged()
@@ -523,25 +519,25 @@ class MapData
         {
             this.keys[i].destroySprite()
         }
-        this.spawners.forEach(function (spawner: EnemySpawner) {
-            spawner.stopSpawning()
-            spawner.clear()
-        })
+        if(this.spawner != null)
+        {
+            this.spawner.stopSpawning()
+            this.spawner.clear()
+        }
         this.powerUps.forEach(function(pUp: PowerUp) {
             pUp.destroySprite()
         })
     }
     setActiveMap()
     {
+        this.setupShadow()
         scene.setTileMapLevel(this.tilemap)
         this.doors.forEach(function (door: DoorData, index: number) {
             door.findDoorDirection()
         })
         if(!this.setup)
         {
-            this.spawners.forEach(function (spawner: EnemySpawner) {
-                spawner.startSpawning()
-            })
+            this.spawner.startSpawning()
             this.setup = true
             
             for(let i = 0; i < this.numPowerUps.length; i++)
@@ -565,9 +561,7 @@ class MapData
                     this.powerUps[i].createSprite()
             }
             // Restart Spawners
-            this.spawners.forEach(function (spawner: EnemySpawner) {
-                spawner.enableSpawning()
-            })
+            this.spawner.enableSpawning()
         }
         
         // Regenerate keys
@@ -623,20 +617,14 @@ class MapData
     }
     handleEnemyCollision(enemy1: Sprite, enemy2: Sprite)
     {
-        for(let i = 0; i < this.spawners.length; i++)
-        {
-            this.spawners[i].notifyCollide(enemy1, enemy2)
-        }
+        console.log('Notifying collision..')
+        this.spawner.notifyCollide(enemy1, enemy2)
     }
     handlePlrEnemyCollision(enemy: Sprite) {
-        for (let i = 0; i < this.spawners.length; i++) {
-            let e = this.spawners[i].findEnemyFromSprite(enemy)
-            if (e != undefined)
-            {
-                player.dealDamage(e.damage)
-                this.spawners[i].destroyEnemy(e)
-                break
-            }
+        if (enemy != null)
+        {
+            player.dealDamage(5)
+            this.spawner.destroyEnemy(enemy)
         }
     }
     tryUseDoor(door: number[])
@@ -686,9 +674,9 @@ class Backup{
 /**
  * Constants
  */
-let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true, 3), new DoorData(0.5, 15.5, [], true, 3)], 0, [], [new FollowerSpawner([[0, 0], [50, 50]], [50, 60])],[3]),
-    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [], [],[4]),
-    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4)], 8.75, [new Key(230, 24, [0, 0])], [],[1,3,1])
+let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true, 3), new DoorData(0.5, 15.5, [], true, 3)], 0, [], new FollowerSpawner([[0, 0], [50, 50]], [50, 60]),[3]),
+    new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [], null,[4]),
+    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4)], 8.75, [new Key(230, 24, [0, 0])], null,[1,3,1])
 ]
 let POWER_UP_KINDS = [assets.image`heartPowerUp`, assets.image`coin3`, assets.image`coin0`]
 let POWER_UP_SCORES = [0, 1, 3]
@@ -731,7 +719,7 @@ function touchingTileOfTypes(sprite: Sprite, types: Image[]) {
 
 function playerDied()
 {
-    /*if(info.life() >= 0)
+    if(info.life() >= 0)
     {
         game.splash("You Died!", "Press A to respawn!")
         changeMap(0)
@@ -740,7 +728,7 @@ function playerDied()
     }
     else{
         game.gameOver(false)
-    }*/
+    }
 }
 
 // Game loop. Needed to draw health bars

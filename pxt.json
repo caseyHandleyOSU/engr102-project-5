@@ -4,7 +4,9 @@
     "dependencies": {
         "device": "*",
         "color-coded-tilemap": "*",
-        "Timers": "github:microsoft/arcade-timers#v1.1.0"
+        "Timers": "github:microsoft/arcade-timers#v1.1.0",
+        "settings-blocks": "github:microsoft/pxt-settings-blocks#v1.0.0",
+        "jacdac": "github:microsoft/pxt-jacdac#v1.9.25"
     },
     "files": [
         "main.blocks",
