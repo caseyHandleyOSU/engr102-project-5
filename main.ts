@@ -318,8 +318,9 @@ class EnemySpawner
     lastSpawnTime: number = 0
     destroyOnCollision: boolean
     maxEnemies: number
+    speeds: number[]
 
-    constructor(img: Image, maxHP: number, startingHP: number, spawnDelay: number, locations: number[][], destroyOnCollision: boolean, max: number)
+    constructor(img: Image, maxHP: number, startingHP: number, spawnDelay: number, locations: number[][], destroyOnCollision: boolean, max: number, speeds: number[])
     {
         this.img = img
         this.maxHP = maxHP
@@ -328,6 +329,7 @@ class EnemySpawner
         this.spawnLocations = locations
         this.destroyOnCollision = destroyOnCollision
         this.maxEnemies = max
+        this.speeds = speeds
     }
     startSpawning()
     {
@@ -351,6 +353,7 @@ class EnemySpawner
         game.onUpdateInterval(this.spawnDelay, function () {
             if(this.spawningEnabled)
                 this.callSpawn()
+                this.handleAI()
         })
     }
     trySpawn(firstSpawn: boolean)
@@ -403,11 +406,9 @@ class EnemySpawner
 }
 class FollowerSpawner extends EnemySpawner
 {
-    speeds: number[]
     constructor(locations: number[][], speeds: number[])
     {
-        super(assets.image`skellyFront`, 1, 1, 1000, locations, true, 15)
-        this.speeds = speeds
+        super(assets.image`skellyFront`, 1, 1, 1000, locations, true, 15, speeds)
     }
     applyAI(enemy: Sprite)
     {
@@ -437,6 +438,75 @@ class FollowerSpawner extends EnemySpawner
             if(e1 != null)
                 this.destroyEnemy(e1)
             if(e2 != null)
+                this.destroyEnemy(e2)
+            return true
+        }
+        return false
+    }
+}
+class PatrolSpawner extends EnemySpawner{
+    constructor(locations: number[][], speeds: number[]) {
+        super(assets.image`skellyFront`, 1, 1, 1000, locations, true, 2, speeds)
+    }
+    applyAI(enemy: Sprite) {
+        enemy.follow(player.sprite, this.speeds[Math.floor(Math.random() * this.speeds.length)], 300)
+    }
+    handleAI() {
+        let allEnemies = sprites.allOfKind(SpriteKind.Enemy)
+        for(let i = 0; i < allEnemies.length; i++)
+        {
+            let currentEnemy = allEnemies[i]
+            let dir = sprites.readDataBoolean(currentEnemy, 'toDest')
+            if (dir)
+            {
+                console.log('dir')
+                let xDest = sprites.readDataNumber(currentEnemy, 'xDest')
+                let yDest = sprites.readDataNumber(currentEnemy, 'yDest')
+                if (approxEqual(xDest, currentEnemy.x, 1) && approxEqual(yDest, currentEnemy.y, 1)) {
+                    sprites.setDataBoolean(currentEnemy, 'toDest', false)
+                }
+                else{
+                    let speed = this.speeds[Math.floor(Math.random() * this.speeds.length)]
+                    currentEnemy.setVelocity(Math.sign(xDest - currentEnemy.x) * speed, Math.sign(yDest - currentEnemy.y) * speed)
+                }
+            }
+            else
+            {
+                let xDest = sprites.readDataNumber(currentEnemy, 'xSpawn')
+                let yDest = sprites.readDataNumber(currentEnemy, 'ySpawn')
+                if (approxEqual(xDest, currentEnemy.x, PATROL_DISTANCE_TOLERANCE) && approxEqual(yDest, currentEnemy.y, PATROL_DISTANCE_TOLERANCE)) {
+                    sprites.setDataBoolean(currentEnemy, 'toDest', true)
+                }
+                else {
+                    let speed = this.speeds[Math.floor(Math.random() * this.speeds.length)]
+                    currentEnemy.setVelocity(Math.sign(xDest - currentEnemy.x) * speed, Math.sign(yDest - currentEnemy.y) * speed)
+                    console.log('')
+                }
+            } 
+        }
+    }
+    trySpawn(firstSpawn: boolean) {
+        if (this.spawningEnabled) {
+            if (firstSpawn || this.lastSpawnTime + this.spawnDelay <= game.runtime()) {
+                if (this.spawnedEnemies.length <= this.maxEnemies) {
+                    let newEnemy = sprites.create(this.img, SpriteKind.Enemy)
+                    let location = this.spawnLocations[Math.floor(Math.random() * this.spawnLocations.length)]
+                    sprites.setDataNumber(newEnemy, 'xDest', location[0])
+                    sprites.setDataNumber(newEnemy, 'yDest', location[1])
+                    tiles.placeOnRandomTile(newEnemy, assets.tile`floorLight2`)
+                    sprites.setDataNumber(newEnemy, 'xSpawn', newEnemy.x)
+                    sprites.setDataNumber(newEnemy, 'ySpawn', newEnemy.y)
+                    sprites.setDataBoolean(newEnemy, 'toDest', false)
+                    newEnemy.setStayInScreen(false)
+                }
+            }
+        }
+    }
+    notifyCollide(e1: Sprite, e2: Sprite): boolean {
+        if (this.destroyOnCollision) {
+            if (e1 != null)
+                this.destroyEnemy(e1)
+            if (e2 != null)
                 this.destroyEnemy(e2)
             return true
         }
@@ -489,7 +559,7 @@ class MapData
         if(spawner != null)
             this.spawner = spawner
         else
-            this.spawner = new EnemySpawner(assets.image``,0,0,0,[[]],false,0)
+            this.spawner = new EnemySpawner(assets.image``,0,0,0,[[]],false,0, [])
     }
     draw()
     {
@@ -678,13 +748,14 @@ let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (No
     new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [], null,[4]),
     new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4), new DoorData(7.5, 0.5, [3, 41,224], false, 6)], 8.75, [new Key(230, 24, [0, 0])], null,[1,3,1]),
     new MapData(0, 0, assets.tilemap`top_r`, [new DoorData(2.5, 15.5, [2, 119, 30], false, 5), new DoorData(0.5, 0.5, [4, 496, 136], false, 1)], 0, [new Key(128.5, 47, [2,0])], null, [1, 2, 3]),
-    new MapData(0, 0, assets.tilemap`top_u`, [new DoorData(15.5, 31.5, [0, 257, 26], false, 0), new DoorData(16.5, 31.5, [0, 257, 26], false, 0), new DoorData(31.5, 9.5, [3, 18, 8], true, 1), new DoorData(31.5, 8.5, [3, 18, 8], true, 1)], 0, [new Key(17,333, [1, 4])] , null, [2, 10, 6])
+    new MapData(0, 0, assets.tilemap`top_u`, [new DoorData(15.5, 31.5, [0, 257, 26], false, 0), new DoorData(16.5, 31.5, [0, 257, 26], false, 0), new DoorData(31.5, 9.5, [3, 18, 8], true, 1), new DoorData(31.5, 8.5, [3, 18, 8], true, 1)], 0, [new Key(17,333, [1, 4])] , new PatrolSpawner([[50,61],[385,141],[142, 250],[333,413]],[25,30,35]), [2, 10, 6])
 
 ]
 let POWER_UP_KINDS = [assets.image`heartPowerUp`, assets.image`coin3`, assets.image`coin0`]
 let POWER_UP_SCORES = [0, 1, 3]
 let LAVA_DAMAGE = 4 // Amount of damage lava does per-tick
 let HEART_AMOUNT = 20
+let PATROL_DISTANCE_TOLERANCE = 1
 
 
 let backup: Backup
@@ -760,3 +831,8 @@ sprites.onOverlap(SpriteKind.Enemy, SpriteKind.Enemy, function (enemy1: Sprite, 
 sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (player: Sprite, enemy: Sprite) {
     MAP_DATAS[currentMap].handlePlrEnemyCollision(enemy)
 })
+
+function approxEqual(desired: number, actual: number, tolerance: number)
+{
+    return Math.abs(desired - actual) < tolerance
+}
