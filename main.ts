@@ -265,6 +265,7 @@ class DoorData
             player.sprite.setPosition(this.destination[1], this.destination[2])
         else
             player.sprite.setPosition(MAP_DATAS[currentMap].spawnX, MAP_DATAS[currentMap].spawnY)
+        MAP_DATAS[currentMap].setupShadow()
     }
     /**
      * Finds the direction of this specific door
@@ -497,14 +498,14 @@ class MapData
     setupShadow()
     {
         if (this.shadowScale > 0) {
-            if (this.shadow == null)
-            {
-                this.shadow = sprites.create(assets.image`shadow`, SpriteKind.Map)
-                this.shadow.z = 1
-                this.shadow.setScale(this.shadowScale)
-                this.shadow.setPosition(this.spawnX, this.spawnY)
-                this.shadow.follow(player.sprite, 100)
-            }
+            if (this.shadow != null)
+                this.shadow.destroy()
+            this.shadow = sprites.create(assets.image`shadow`, SpriteKind.Map)
+            this.shadow.z = 1
+            this.shadow.setScale(this.shadowScale)
+            this.shadow.setPosition(player.sprite.x, player.sprite.y)
+            this.shadow.follow(player.sprite, 100)
+            this.shadow.setStayInScreen(false)
         }
     }
     mapChanged()
@@ -593,7 +594,6 @@ class MapData
 
     handleItemCollision(item: Sprite, player: PlayerSprite)
     {
-        // ODO: Fix key bugs
         let spawnable: SpawnableObject = this.findSpawnableFromSprite(item)
         if (spawnable != null)
         {
@@ -674,13 +674,16 @@ class Backup{
 /**
  * Constants
  */
-let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [], true, 0), new DoorData(15.5, 0.5, [], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true, 3), new DoorData(0.5, 15.5, [], true, 3)], 0, [], new FollowerSpawner([[0, 0], [50, 50]], [50, 60]),[3]),
+let MAP_DATAS = [new MapData(250, 190, assets.tilemap`CrossRoadsLarge`, [/** (North) */ new DoorData(16.5, 0.5, [4, 257, 486], true, 0), new DoorData(15.5, 0.5, [4, 257, 486], true, 0), /** (East) to MazeR */ new DoorData(31.5, 15.5, [2, 39, 119], false, 1), new DoorData(31.5, 16.5, [2, 39, 119], false, 1), /** (South) */new DoorData(16.5, 31.5, [], true, 2), new DoorData(15.5, 31.5, [], true, 2),/** (West) */new DoorData(0.5, 16.5, [], true, 3), new DoorData(0.5, 15.5, [], true, 3)], 0, [], new FollowerSpawner([[484, 27], [50, 50], [477, 390], [53, 403], [109, 23]], [50, 60]),[3]),
     new MapData(129.5, 123.5, assets.tilemap`intersection`, [], 0, [], null,[4]),
-    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4)], 8.75, [new Key(230, 24, [0, 0])], null,[1,3,1])
+    new MapData(39, 119, assets.tilemap`mazeR`, [new DoorData(0.5, 7.5, [0, 490, 248], false, 4), new DoorData(7.5, 0.5, [3, 41,224], false, 6)], 8.75, [new Key(230, 24, [0, 0])], null,[1,3,1]),
+    new MapData(0, 0, assets.tilemap`top_r`, [new DoorData(2.5, 15.5, [2, 119, 30], false, 5), new DoorData(0.5, 0.5, [4, 496, 136], false, 1)], 0, [new Key(128.5, 47, [2,0])], null, [1, 2, 3]),
+    new MapData(0, 0, assets.tilemap`top_u`, [new DoorData(15.5, 31.5, [0, 257, 26], false, 0), new DoorData(16.5, 31.5, [0, 257, 26], false, 0), new DoorData(31.5, 9.5, [3, 18, 8], true, 1), new DoorData(31.5, 8.5, [3, 18, 8], true, 1)], 0, [new Key(17,333, [1, 4])] , null, [2, 10, 6])
+
 ]
 let POWER_UP_KINDS = [assets.image`heartPowerUp`, assets.image`coin3`, assets.image`coin0`]
 let POWER_UP_SCORES = [0, 1, 3]
-let LAVA_DAMAGE = 2 // Amount of damage lava does per-tick
+let LAVA_DAMAGE = 4 // Amount of damage lava does per-tick
 let HEART_AMOUNT = 20
 
 
@@ -702,9 +705,9 @@ function changeMap(toMap: number)
 {
     MAP_DATAS[currentMap].mapChanged()
     currentMap = toMap
+    player.sprite.setPosition(MAP_DATAS[currentMap].spawnX, MAP_DATAS[currentMap].spawnY)
     MAP_DATAS[currentMap].setActiveMap()
     scene.setTileMapLevel(MAP_DATAS[currentMap].tilemap)
-    player.sprite.setPosition(MAP_DATAS[currentMap].spawnX, MAP_DATAS[currentMap].spawnY)
     backup = new Backup()
 }
 
@@ -737,7 +740,7 @@ game.onUpdate(function () {
     if(player != null)
         player.drawHealthBar()
         player.checkCollisions()    
-    //console.log(player.sprite.x + " " + player.sprite.y)
+    console.log(player.sprite.x + " " + player.sprite.y)
 })
 
 info.onLifeZero(function(){
